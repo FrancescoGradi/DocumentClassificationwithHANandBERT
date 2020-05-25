@@ -4,7 +4,6 @@ import os.path
 
 import pandas as pd
 import numpy as np
-import tensorflow_datasets as tfds
 
 from keras.preprocessing.text import Tokenizer, text_to_word_sequence
 from nltk.corpus import stopwords
@@ -12,30 +11,17 @@ from nltk.corpus import stopwords
 from utils import cleanString, splitDataframe, wordToSeq, toCategorical
 
 
-MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
-MAX_SENTENCE_NUM = 40  # maximum number of sentences in one document
-MAX_WORD_NUM = 50  # maximum number of words in each sentence
-EMBED_SIZE = 100  # vector size of word embedding
-
-
-if __name__ == '__main__':
+def preprocessing(dataset_name, data_df, MAX_FEATURES=200000, MAX_SENTENCE_NUM=40, MAX_WORD_NUM=50, EMBED_SIZE=100):
     '''
-    # Reading JSON dataset with Pandas
-    
-    dataset_name = "imdb_complete"
-    data_df = pd.read_json(dataset_name + "json")
-    data_df = data_df[["rating", "review"]]
-    data_df.columns = ["label", "text"]
+    :param dataset_name: a string that represents the name of the dataset (it used to save some stuff).
+    :param data_df: dataset in DataFrame Pandas format, with two columns: 'text' and 'label'.
+    :param MAX_FEATURES: maximum number of unique words that should be included in the tokenized word index
+    :param MAX_SENTENCE_NUM: maximum number of sentences in one document
+    :param MAX_WORD_NUM: maximum number of words in each sentence
+    :param EMBED_SIZE: vector size of word embedding
+    :return: train, validation and test cleaned and ready for the network. Also it returns embedding_matrix (weights for
+    the network), word_index and n_classes in dataset.
     '''
-
-    dataset_name = 'imdb_reviews'
-    ds = tfds.load(dataset_name, split='train')
-    reviews = []
-    for element in ds.as_numpy_iterator():
-        reviews.append((element['text'].decode('utf-8'), element['label']))
-
-    data_df = pd.DataFrame(data=reviews, columns=['text', 'label'])
-
 
     # Cleaning text (no uppercase words), removing stopwords
 
@@ -53,10 +39,11 @@ if __name__ == '__main__':
     data_cleaned.loc[:, 'text'] = pd.Series(reviews, index=data_df.index)
     data_cleaned.loc[:, 'label'] = pd.Categorical(data_cleaned.label)
 
-    # Adding a normalized code from 0 to len(label) - 1
+    # Adding a normalized code from 0 to len(label) - 1. We create a dict {label: code}.
 
     data_cleaned['code'] = data_cleaned.label.cat.codes
     categoryToCode = dict(enumerate(data_cleaned['label'].cat.categories))
+    n_classes = len(categoryToCode)
 
     print(data_cleaned)
 
@@ -96,29 +83,32 @@ if __name__ == '__main__':
         if embedding_vector is not None:
             embedding_matrix[i] = embedding_vector
 
+    # We split data_cleaned pandas dataframe with code column as y
 
     train, validation, test = splitDataframe(data_cleaned, 'code', 0.8, 0.1, 0.1)
 
+    # Every text is converted to a numeric sequence (a numpy matrix with dimension MAX_SENTENCE_NUM x MAX_WORD_NUM)
+    # thanks to word_index just created. Every matrix is added to a list and converted in a numpy array of matrices.
+
     # Training
-    paras = []
+    sequences = []
     for i in range(train['text'].shape[0]):
-        sequence = wordToSeq(train['text'].iloc[i], word_index, MAX_SENTENCE_NUM, MAX_WORD_NUM, MAX_FEATURES)
-        paras.append(sequence)
-    x_train = np.array(paras)
+        sequences.append(wordToSeq(train['text'].iloc[i], word_index, MAX_SENTENCE_NUM, MAX_WORD_NUM, MAX_FEATURES))
+    x_train = np.array(sequences)
     y_train = toCategorical(train['code'], categoryToCode)
 
     # Validation
-    paras = []
+    sequences = []
     for i in range(validation['text'].shape[0]):
-        sequence = wordToSeq(validation['text'].iloc[i], word_index, MAX_SENTENCE_NUM, MAX_WORD_NUM, MAX_FEATURES)
-        paras.append(sequence)
-    x_val = np.array(paras)
+        sequences.append(wordToSeq(validation['text'].iloc[i], word_index, MAX_SENTENCE_NUM, MAX_WORD_NUM, MAX_FEATURES))
+    x_val = np.array(sequences)
     y_val = toCategorical(validation['code'], categoryToCode)
 
     # Test
-    paras = []
+    sequences = []
     for i in range(test['text'].shape[0]):
-        sequence = wordToSeq(test['text'].iloc[i], word_index, MAX_SENTENCE_NUM, MAX_WORD_NUM, MAX_FEATURES)
-        paras.append(sequence)
-    x_test = np.array(paras)
+        sequences.append(wordToSeq(test['text'].iloc[i], word_index, MAX_SENTENCE_NUM, MAX_WORD_NUM, MAX_FEATURES))
+    x_test = np.array(sequences)
     y_test = toCategorical(test['code'], categoryToCode)
+
+    return x_train, y_train, x_val, y_val, x_test, y_test, embedding_matrix, word_index, n_classes
