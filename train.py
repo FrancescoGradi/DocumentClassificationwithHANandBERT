@@ -1,10 +1,12 @@
 import pandas as pd
 import numpy as np
+import datetime
 
 import tensorflow_datasets as tfds
 from matplotlib import pyplot as plt
-from tensorflow.keras.optimizers import SGD
+from keras.optimizers import SGD
 from sklearn.metrics import classification_report
+from keras.callbacks import TensorBoard
 
 from preprocessing import preprocessing
 from hanModel import HanModel
@@ -20,9 +22,8 @@ if __name__ == '__main__':
     NUM_EPOCHS = 2
     INIT_LR = 1e-2
 
-    '''
     # Reading JSON dataset with Pandas
-
+    '''
     dataset_name = "imdb_complete"
     data_df = pd.read_json(dataset_name + ".json")
     data_df = data_df[["rating", "review"]]
@@ -36,6 +37,7 @@ if __name__ == '__main__':
         reviews.append((element['text'].decode('utf-8'), element['label']))
 
     data_df = pd.DataFrame(data=reviews, columns=['text', 'label'])
+
 
     x_train, y_train, x_val, y_val, x_test, y_test, embedding_matrix, word_index, n_classes = preprocessing(
         dataset_name=dataset_name,
@@ -64,11 +66,12 @@ if __name__ == '__main__':
     plt.figure()
     plt.plot(N, h.history["loss"], label="train_loss")
     plt.plot(N, h.history["val_loss"], label="val_loss")
-    plt.plot(N, h.history["accuracy"], label="train_acc")
-    plt.plot(N, h.history["val_accuracy"], label="val_acc")
+    plt.plot(N, h.history["acc"], label="train_acc")
+    plt.plot(N, h.history["val_acc"], label="val_acc")
     plt.title(title)
     plt.xlabel("Epoch #")
     plt.ylabel("Loss/Accuracy")
     plt.legend()
+    plt.show()
 
     model.save('model_' + str(dataset_name) + '_' + str(NUM_EPOCHS) + '_epoch.h5')
