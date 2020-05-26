@@ -30,6 +30,23 @@ def cleanString(text, stop_words):
     return cleaned_string
 
 
+def wordAndSentenceCounter(data_df):
+    """
+    Print some stats useful to choose problem parameters.
+    :param data_df: pandas dataframe of dataset, with column named 'text'.
+    :return: None
+    """
+    n_sent = 0
+    n_words = 0
+    for i in range(data_df.shape[0]):
+        sent = tokenize.sent_tokenize(data_df.loc[i, 'text'])
+        for satz in sent:
+            n_words += len(tokenize.word_tokenize(satz))
+        n_sent += len(sent)
+    print("Average number of words in each sentence: ", round(n_words / n_sent))
+    print("Average number of sentences in each document: ", round(n_sent / data_df.shape[0]))
+
+
 def splitDataframe(dataframe, column_name, training_split=0.6, validation_split=0.2, test_split=0.2):
     """
     Splits a pandas dataframe into trainingset, validationset and testset in specified ratio.

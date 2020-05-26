@@ -1,9 +1,10 @@
-from keras import Model
-from keras.layers import Input, Dropout, GRU, TimeDistributed, Bidirectional, Embedding, Dense
-from keras import backend as K
-from keras import layers
+from tensorflow.keras import Model
+from tensorflow.keras.layers import Input, Dropout, GRU, TimeDistributed, Bidirectional, Embedding, Dense
+from tensorflow.keras import backend as K
+from tensorflow.keras import layers
+from tensorflow.keras import regularizers
 
-from keras import initializers as initializers
+from tensorflow.keras import initializers as initializers
 
 
 class AttentionLayer(layers.Layer):
@@ -11,27 +12,41 @@ class AttentionLayer(layers.Layer):
     Hierarchial Attention Layer as described by Hierarchical Attention Networks for Document Classification(2016)
     - Yang et. al.
     Source: https://www.cs.cmu.edu/~hovy/papers/16HLT-hierarchical-attention-networks.pdf
-    Theano backend
     """
 
     def __init__(self, attention_dim=100, return_coefficients=False, **kwargs):
         # Initializer
         self.supports_masking = True
         self.return_coefficients = return_coefficients
-        self.init = initializers.get('glorot_uniform')  # initializes values with uniform distribution
+        self.init = initializers.get('glorot_uniform')
         self.attention_dim = attention_dim
         super(AttentionLayer, self).__init__(**kwargs)
 
     def build(self, input_shape):
-        # Builds all weights
         # W = Weight matrix, b = bias vector, u = context vector
         assert len(input_shape) == 3
-        self.W = K.variable(self.init((input_shape[-1], self.attention_dim)), name='W')
-        self.b = K.variable(self.init((self.attention_dim,)), name='b')
-        self.u = K.variable(self.init((self.attention_dim, 1)), name='u')
-        self.trainable_weights = [self.W, self.b, self.u]
+
+        self.W = self.add_weight(shape=(input_shape[-1], self.attention_dim),
+                                 initializer=self.init,
+                                 trainable=True,
+                                 name='W')
+        self.b = self.add_weight(shape=(self.attention_dim,),
+                                 initializer=self.init,
+                                 trainable=True,
+                                 name='b')
+        self.u = self.add_weight(shape=(self.attention_dim, 1),
+                                 initializer=self.init,
+                                 trainable=True,
+                                 name='u')
 
         super(AttentionLayer, self).build(input_shape)
+
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({
+            'attention_dim': self.attention_dim,
+        })
+        return config
 
     def compute_mask(self, input, input_mask=None):
         return None
@@ -62,6 +77,8 @@ class AttentionLayer(layers.Layer):
             return [(input_shape[0], input_shape[-1]), (input_shape[0], input_shape[-1], 1)]
         else:
             return input_shape[0], input_shape[-1]
+
+
 
 '''
 
@@ -120,7 +137,8 @@ def HanModel(n_classes, len_word_index, embedding_matrix, MAX_SENTENCE_NUM=40, M
     word_input = Input(shape=(MAX_WORD_NUM,), dtype='int32', name='word_input')
     word_sequences = Embedding(len_word_index + 1, EMBED_SIZE, weights=[embedding_matrix], input_length=MAX_WORD_NUM,
                                trainable=False, name='word_embedding')(word_input)
-    word_gru = Bidirectional(GRU((int)(EMBED_SIZE / 2), return_sequences=True), name='word_gru')(word_sequences)
+    word_gru = Bidirectional(GRU((int)(EMBED_SIZE / 2), return_sequences=True,
+                                 recurrent_regularizer=regularizers.l2(0.001)), name='word_gru')(word_sequences)
     word_dense = Dense(EMBED_SIZE, activation='relu', name='word_dense')(word_gru)
     word_att = AttentionLayer(EMBED_SIZE, return_coefficients=False, name='word_attention')(word_dense)
 
@@ -129,10 +147,11 @@ def HanModel(n_classes, len_word_index, embedding_matrix, MAX_SENTENCE_NUM=40, M
     # Sentence Attention model
     sent_input = Input(shape=(MAX_SENTENCE_NUM, MAX_WORD_NUM), dtype='int32', name='sent_input')
     sent_encoder = TimeDistributed(word_encoder, name='sent_linking')(sent_input)
-    sent_gru = Bidirectional(GRU((int)(EMBED_SIZE / 2), return_sequences=True), name='sent_gru')(sent_encoder)
+    sent_gru = Bidirectional(GRU((int)(EMBED_SIZE / 2), return_sequences=True,
+                                 recurrent_regularizer=regularizers.l2(0.001)), name='sent_gru')(sent_encoder)
     sent_dense = Dense(EMBED_SIZE, activation='relu', name='sent_dense')(sent_gru)
     sent_att = AttentionLayer(EMBED_SIZE, return_coefficients=False, name='sent_attention')(sent_dense)
-    sent_drop = Dropout(0.5, name='sent_dropout')(sent_att)
+    sent_drop = Dropout(0.55, name='sent_dropout')(sent_att)
     preds = Dense(n_classes, activation='softmax', name='output')(sent_drop)
 
     return Model(sent_input, preds, name='HanModel')
