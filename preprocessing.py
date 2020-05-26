@@ -11,7 +11,8 @@ from nltk.corpus import stopwords
 from utils import cleanString, splitDataframe, wordToSeq, toCategorical
 
 
-def preprocessing(dataset_name, data_df, MAX_FEATURES=200000, MAX_SENTENCE_NUM=40, MAX_WORD_NUM=50, EMBED_SIZE=100):
+def preprocessing(dataset_name, data_df, save_all=False, MAX_FEATURES=200000, MAX_SENTENCE_NUM=40, MAX_WORD_NUM=50,
+                  EMBED_SIZE=100):
     '''
     :param dataset_name: a string that represents the name of the dataset (it used to save some stuff).
     :param data_df: dataset in DataFrame Pandas format, with two columns: 'text' and 'label'.
@@ -110,5 +111,11 @@ def preprocessing(dataset_name, data_df, MAX_FEATURES=200000, MAX_SENTENCE_NUM=4
         sequences.append(wordToSeq(test['text'].iloc[i], word_index, MAX_SENTENCE_NUM, MAX_WORD_NUM, MAX_FEATURES))
     x_test = np.array(sequences)
     y_test = toCategorical(test['code'], categoryToCode)
+
+    if save_all is True:
+        os.makedirs(os.path.dirname('datasets/' + dataset_name + '_cleaned.txt'), exist_ok=True)
+        with open('datasets/' + dataset_name + '_cleaned.txt', 'wb') as f:
+            pickle.dump([x_train, y_train, x_val, y_val, x_test, y_test, embedding_matrix, word_index, n_classes], f)
+
 
     return x_train, y_train, x_val, y_val, x_test, y_test, embedding_matrix, word_index, n_classes

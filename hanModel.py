@@ -151,7 +151,7 @@ def HanModel(n_classes, len_word_index, embedding_matrix, MAX_SENTENCE_NUM=40, M
                                  recurrent_regularizer=regularizers.l2(0.001)), name='sent_gru')(sent_encoder)
     sent_dense = Dense(EMBED_SIZE, activation='relu', name='sent_dense')(sent_gru)
     sent_att = AttentionLayer(EMBED_SIZE, return_coefficients=False, name='sent_attention')(sent_dense)
-    sent_drop = Dropout(0.55, name='sent_dropout')(sent_att)
+    sent_drop = Dropout(rate=0.2, name='sent_dropout')(sent_att)
     preds = Dense(n_classes, activation='softmax', name='output')(sent_drop)
 
     return Model(sent_input, preds, name='HanModel')

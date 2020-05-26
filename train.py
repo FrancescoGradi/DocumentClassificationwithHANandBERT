@@ -4,6 +4,7 @@ import datetime
 import os.path
 import pathlib
 import shutil
+import pickle
 
 import tensorflow_datasets as tfds
 from matplotlib import pyplot as plt
@@ -17,7 +18,7 @@ from utils import wordAndSentenceCounter
 
 
 if __name__ == '__main__':
-
+    '''
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 20  # maximum number of sentences in one document
     MAX_WORD_NUM = 40  # maximum number of words in each sentence
@@ -49,12 +50,25 @@ if __name__ == '__main__':
         reviews.append((element['text'].decode('utf-8'), element['label']))
 
     data_df = pd.DataFrame(data=reviews, columns=['text', 'label'])
-    '''
+
     # wordAndSentenceCounter(data_df=data_df)
 
-    x_train, y_train, x_val, y_val, x_test, y_test, embedding_matrix, word_index, n_classes = preprocessing(
-        dataset_name=dataset_name, data_df=data_df, MAX_FEATURES=MAX_FEATURES, MAX_SENTENCE_NUM=MAX_SENTENCE_NUM,
-        MAX_WORD_NUM=MAX_WORD_NUM, EMBED_SIZE=EMBED_SIZE)
+    if (os.path.isfile('datasets/' + dataset_name + '_cleaned.txt')):
+        with open('datasets/' + dataset_name + '_cleaned.txt', 'rb') as f:
+            data_cleaned = pickle.load(f)
+        x_train = data_cleaned[0]
+        y_train = data_cleaned[1]
+        x_val = data_cleaned[2]
+        y_val = data_cleaned[3]
+        x_test = data_cleaned[4]
+        y_test = data_cleaned[5]
+        embedding_matrix = data_cleaned[6]
+        word_index = data_cleaned[7]
+        n_classes = data_cleaned[8]
+    else:
+        x_train, y_train, x_val, y_val, x_test, y_test, embedding_matrix, word_index, n_classes = preprocessing(
+            dataset_name=dataset_name, data_df=data_df, save_all=True, MAX_FEATURES=MAX_FEATURES,
+            MAX_SENTENCE_NUM=MAX_SENTENCE_NUM, MAX_WORD_NUM=MAX_WORD_NUM, EMBED_SIZE=EMBED_SIZE)
 
 
     model = HanModel(n_classes=n_classes, len_word_index=len(word_index), embedding_matrix=embedding_matrix,
@@ -68,7 +82,7 @@ if __name__ == '__main__':
     shutil.rmtree(log_dir, ignore_errors=True)
 
     callbacks = [
-        EarlyStopping(monitor='val_acc', patience=4, restore_best_weights=False),
+        EarlyStopping(monitor='acc', patience=4, restore_best_weights=True),
         TensorBoard(log_dir=log_dir, histogram_freq=1, profile_batch=0),
     ]
 
@@ -80,8 +94,9 @@ if __name__ == '__main__':
     predictions = model.predict(x_test, batch_size=BATCH_SIZE)
     print(classification_report(y_test.argmax(axis=1), predictions.argmax(axis=1)))
 
-    os.makedirs(os.path.dirname('models/model_' + dataset_name + '_' + str(NUM_EPOCHS) + '_epoch.h5'), exist_ok=True)
-    model.save('models/model_' + str(dataset_name) + '_' + str(NUM_EPOCHS) + '_epoch.h5')
+    os.makedirs(os.path.dirname('models/model_' + dataset_name + '/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+                                + '.h5'), exist_ok=True)
+    model.save('models/model_' + dataset_name + '/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '.h5')
 
     '''
     # determine the number of epochs and then construct the plot title
