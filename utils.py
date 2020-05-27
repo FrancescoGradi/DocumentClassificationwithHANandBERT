@@ -1,7 +1,11 @@
+import pandas as pd
+import numpy as np
+import ijson
+import json
+
 from nltk import tokenize
 from nltk.stem import WordNetLemmatizer
-
-import numpy as np
+from nltk.corpus import stopwords
 
 
 def cleanString(text, stop_words):
@@ -133,3 +137,39 @@ def toCategorical(series, class_dict):
     for key, value in series.iteritems():
         y_cat.append(new_dict[value])
     return np.array(y_cat)
+
+
+def yelpYear(dataset_name, year):
+    """
+    Select from Yelp complete dataset only rows till a specific year in input and save it in json standard. With large
+    dataset can be useful splitting and using one piece at the time. In Linux terminal: split -l and after cat.
+    :param dataset_name: string name of dataset, contained in datasets local directory
+    :param year: year until
+    :return: None
+    """
+    data_df = pd.read_json("datasets/temp/" + dataset_name + ".json", lines=True)
+    data_df = data_df[["stars", "text", "date"]]
+    data_df = data_df[(data_df['date'] <= str(year) + '-12-30') & (data_df['date'] >= str(year) + '-01-01')]
+    data_df = data_df[["stars", "text"]]
+    data_df.columns = ["label", "text"]
+
+    reviews = []
+    stop_words = set(stopwords.words('english'))
+    data_cleaned = data_df.copy()
+
+    n = data_df['text'].shape[0]
+    col = data_df.columns.get_loc('text')
+    for i in range(n):
+        reviews.append(cleanString(data_df.iloc[i, col], stop_words))
+
+    # We copy our clean reviews in data_cleaned pandas dataframe
+
+    data_cleaned.loc[:, 'text'] = pd.Series(reviews, index=data_df.index)
+    data_cleaned.loc[:, 'label'] = pd.Categorical(data_cleaned.label)
+
+    data_cleaned.to_csv('datasets/' + dataset_name + '_' + str(year) + '.csv')
+
+    files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+    for f in files:
+        print(f)
+        yelpYear('xa' + f, 2014)

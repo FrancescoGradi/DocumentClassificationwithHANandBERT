@@ -5,6 +5,7 @@ import os.path
 import pathlib
 import shutil
 import pickle
+import json
 
 import tensorflow_datasets as tfds
 from matplotlib import pyplot as plt
@@ -18,7 +19,22 @@ from utils import wordAndSentenceCounter
 
 
 if __name__ == '__main__':
+
+    MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
+    MAX_SENTENCE_NUM = 15  # maximum number of sentences in one document
+    MAX_WORD_NUM = 25  # maximum number of words in each sentence
+    EMBED_SIZE = 100  # vector size of word embedding
+    BATCH_SIZE = 50
+    NUM_EPOCHS = 10
+    INIT_LR = 1e-2
+
+    # Reading dataset with Pandas
+
+    dataset_name = "yelp_2014"
+    data_df = pd.read_csv("datasets/" + dataset_name + ".csv")
+
     '''
+
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 20  # maximum number of sentences in one document
     MAX_WORD_NUM = 40  # maximum number of words in each sentence
@@ -34,7 +50,7 @@ if __name__ == '__main__':
     data_df = data_df[["rating", "review"]]
     data_df.columns = ["label", "text"]
 
-    '''
+    
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 25  # maximum number of sentences in one document
     MAX_WORD_NUM = 40  # maximum number of words in each sentence
@@ -50,6 +66,7 @@ if __name__ == '__main__':
         reviews.append((element['text'].decode('utf-8'), element['label']))
 
     data_df = pd.DataFrame(data=reviews, columns=['text', 'label'])
+    '''
 
     # wordAndSentenceCounter(data_df=data_df)
 
@@ -67,7 +84,7 @@ if __name__ == '__main__':
         n_classes = data_cleaned[8]
     else:
         x_train, y_train, x_val, y_val, x_test, y_test, embedding_matrix, word_index, n_classes = preprocessing(
-            dataset_name=dataset_name, data_df=data_df, save_all=True, MAX_FEATURES=MAX_FEATURES,
+            dataset_name=dataset_name, data_cleaned=data_df, save_all=True, MAX_FEATURES=MAX_FEATURES,
             MAX_SENTENCE_NUM=MAX_SENTENCE_NUM, MAX_WORD_NUM=MAX_WORD_NUM, EMBED_SIZE=EMBED_SIZE)
 
 
