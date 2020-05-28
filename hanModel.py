@@ -14,7 +14,7 @@ class AttentionLayer(layers.Layer):
     Source: https://www.cs.cmu.edu/~hovy/papers/16HLT-hierarchical-attention-networks.pdf
     """
 
-    def __init__(self, attention_dim=100, return_coefficients=False, **kwargs):
+    def __init__(self, attention_dim=100, return_coefficients=True, **kwargs):
         # Initializer
         self.supports_masking = True
         self.return_coefficients = return_coefficients
@@ -140,9 +140,10 @@ def HanModel(n_classes, len_word_index, embedding_matrix, MAX_SENTENCE_NUM=40, M
     word_gru = Bidirectional(GRU((int)(EMBED_SIZE / 2), return_sequences=True,
                                  recurrent_regularizer=regularizers.l2(0.001)), name='word_gru')(word_sequences)
     word_dense = Dense(EMBED_SIZE, activation='relu', name='word_dense')(word_gru)
-    word_att = AttentionLayer(EMBED_SIZE, return_coefficients=False, name='word_attention')(word_dense)
+    word_att, word_coeff = AttentionLayer(EMBED_SIZE, return_coefficients=True, name='word_attention')(word_dense)
 
-    word_encoder = Model(inputs=word_input, outputs=word_att)
+    word_encoder = Model(inputs=word_input, outputs=word_att, name='WordEncoder')
+    print(word_encoder.summary())
 
     # Sentence Attention model
     sent_input = Input(shape=(MAX_SENTENCE_NUM, MAX_WORD_NUM), dtype='int32', name='sent_input')
@@ -150,7 +151,7 @@ def HanModel(n_classes, len_word_index, embedding_matrix, MAX_SENTENCE_NUM=40, M
     sent_gru = Bidirectional(GRU((int)(EMBED_SIZE / 2), return_sequences=True,
                                  recurrent_regularizer=regularizers.l2(0.001)), name='sent_gru')(sent_encoder)
     sent_dense = Dense(EMBED_SIZE, activation='relu', name='sent_dense')(sent_gru)
-    sent_att = AttentionLayer(EMBED_SIZE, return_coefficients=False, name='sent_attention')(sent_dense)
+    sent_att, sent_coeff = AttentionLayer(EMBED_SIZE, return_coefficients=True, name='sent_attention')(sent_dense)
     sent_drop = Dropout(rate=0.2, name='sent_dropout')(sent_att)
     preds = Dense(n_classes, activation='softmax', name='output')(sent_drop)
 

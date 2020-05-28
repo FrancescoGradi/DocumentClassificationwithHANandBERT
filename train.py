@@ -6,10 +6,11 @@ import pathlib
 import shutil
 import pickle
 import json
-
 import tensorflow_datasets as tfds
+import tensorflow as tf
+
 from matplotlib import pyplot as plt
-from tensorflow.keras.optimizers import SGD
+from tensorflow.keras.optimizers import Adam, SGD
 from sklearn.metrics import classification_report
 from tensorflow.keras.callbacks import TensorBoard, EarlyStopping
 
@@ -19,13 +20,15 @@ from utils import wordAndSentenceCounter
 
 
 if __name__ == '__main__':
+    physical_devices = tf.config.list_physical_devices('GPU')
+    tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
 
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 15  # maximum number of sentences in one document
     MAX_WORD_NUM = 25  # maximum number of words in each sentence
     EMBED_SIZE = 100  # vector size of word embedding
-    BATCH_SIZE = 50
-    NUM_EPOCHS = 10
+    BATCH_SIZE = 64
+    NUM_EPOCHS = 25
     INIT_LR = 1e-2
 
     # Reading dataset with Pandas
@@ -34,7 +37,6 @@ if __name__ == '__main__':
     data_df = pd.read_csv("datasets/" + dataset_name + ".csv")
 
     '''
-
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 20  # maximum number of sentences in one document
     MAX_WORD_NUM = 40  # maximum number of words in each sentence
@@ -49,13 +51,14 @@ if __name__ == '__main__':
     data_df = pd.read_json("datasets/" + dataset_name + ".json")
     data_df = data_df[["rating", "review"]]
     data_df.columns = ["label", "text"]
-
+    
+   
     
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 25  # maximum number of sentences in one document
     MAX_WORD_NUM = 40  # maximum number of words in each sentence
     EMBED_SIZE = 100  # vector size of word embedding
-    BATCH_SIZE = 50
+    BATCH_SIZE = 64
     NUM_EPOCHS = 10
     INIT_LR = 1e-2
     
@@ -66,7 +69,7 @@ if __name__ == '__main__':
         reviews.append((element['text'].decode('utf-8'), element['label']))
 
     data_df = pd.DataFrame(data=reviews, columns=['text', 'label'])
-    '''
+     '''
 
     # wordAndSentenceCounter(data_df=data_df)
 
@@ -90,8 +93,8 @@ if __name__ == '__main__':
 
     model = HanModel(n_classes=n_classes, len_word_index=len(word_index), embedding_matrix=embedding_matrix,
                      MAX_SENTENCE_NUM=MAX_SENTENCE_NUM, MAX_WORD_NUM=MAX_WORD_NUM, EMBED_SIZE=EMBED_SIZE)
-    optimizer = SGD(lr=INIT_LR, momentum=0.9, decay=INIT_LR / NUM_EPOCHS)
-    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['acc'])
+    optimizer = SGD(momentum=0.9)
+    model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['acc'])
 
     print(model.summary())
 
