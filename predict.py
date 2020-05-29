@@ -1,148 +1,152 @@
 import pickle
 import numpy as np
+import pandas as pd
 
 from tensorflow.keras.models import load_model, Model
 from nltk.corpus import stopwords
 from nltk import tokenize
 
 from hanModel import AttentionLayer, HanModel
-from utils import cleanString, wordToSeq
+from utils import cleanString, wordToSeq, wordAttentionWeights
 
 import tensorflow as tf
 
-physical_devices = tf.config.list_physical_devices('GPU')
-tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
 
-
-MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
-MAX_SENTENCE_NUM = 15  # maximum number of sentences in one document
-MAX_WORD_NUM = 25  # maximum number of words in each sentence
-EMBED_SIZE = 100  # vector size of word embedding
-BATCH_SIZE = 50
-NUM_EPOCHS = 10
-INIT_LR = 1e-2
-
-dataset_name = 'yelp_2014'
-
-# Load model from saved hdf5 file
-model = load_model('models/model_yelp_2014/20200527-220312.h5', custom_objects={'AttentionLayer': AttentionLayer})
-
-# Good Review
-#review = "As a basketball lover that grew up watching Michael as an idol this series called The last dance is just an amazing dream. I was only a teenager during the 90's with barely access to NBA basketball or footage. So, all the episodes are just amazing. Pretty intense, interesting and an amazing way to understand how Michael Jordan become the best NBA basketball Player of all time and at the same time understand how was his last dance with the Chicago Bulls."
-
-# Bad Review
-#review = "This series is really nicely shot, with some stunning landscapes. The cinematographer should be commended and for this I give it 1 extra star. I have read and watched many (many!) fantasy stories and while some have obvious inconsistencies and plot holes that are to a greater or lesser degree forgiveable, the whole premise of this series is so flawed as to make suspension of disbelief impossible. Nothing in this world of blind people makes any sense. How can it be that there are 'guide ropes' in the villiage (that are only used once) and to go into a cave (that are used every time they enter or leave) but they are otherwise able to stride around the countryside confidently, climb ladders and even fight without them? Why would they end up living up a mountain? Surely civilisation would gather in more temperate climates where food was easier to cultivate...talking of which, what do they eat? No meat ovbiously (but I would like to see them try to catch a rabbit!) but how do they even farm? How on earth can a person who is blind from birth, born to generations of blind ancestors, learn falconry? Think about it for a moment... It's so mixed-up, sometimes you think yeah, if this was the first generation of blind people that might be OK and other times it's well, maybe if enough time had passed they'd learn that. I could go on, but suffice it to say that there are so, so many problems that I just can't accept that such a civilisation could exist. Added to that there are also many performance and production mistakes (people hand objects to each other directly, pick things up, dress in matching colours etc) that jar you out of the world too."
-
-# 4 stars
-#review = "The ingredients are always fresh and I like that I can customize everything. The price for the pita\/salad is reasonable, but after the delivery fee of $3, it can be pricey. Definitely a great option if I forget my lunch at home."
-
-# 1 Star
-review = "The tables and floor were dirty. I was the only customer on a Saturday nite and  the person working the counter ignored me I had a corned beef sandwich. I took three bites  and threw it in the trash"
-
-stopWords = set(stopwords.words('english'))
-
-with open('indices/word_index_' + dataset_name + '.txt', 'rb') as f:
-    word_index = pickle.load(f)
-
-review_cleaned = cleanString(review, stopWords)
-input_array = wordToSeq(review_cleaned, word_index, MAX_SENTENCE_NUM, MAX_WORD_NUM, MAX_FEATURES)
-
-with open('datasets/' + dataset_name + '_cleaned.txt', 'rb') as f:
-    data_cleaned = pickle.load(f)
-
-
-sent_att_weights = Model(model.inputs, model.get_layer('sent_attention').output, name='SentenceAttention')
-word_encoder = model.get_layer('sent_linking').layer
-
-# word_encoder = Model(model.get_layer('word_input').inputs, model.get_layer('word_attention').output)
-print(sent_att_weights.summary())
-
-output_array = sent_att_weights.predict(np.resize(input_array, (1, MAX_SENTENCE_NUM, MAX_WORD_NUM)))[1]
-print(output_array)
-print(output_array.flatten().argsort())
-
-# Get n sentences with most attention in document
-n_sentences = 2
-sent_index = output_array.flatten().argsort()[-n_sentences:]
-print(sent_index)
-sent_index = np.sort(sent_index)
-print(sent_index)
-sent_index = sent_index.tolist()
-
-print(sent_index)
-print(' ')
-
-# Create summary using n sentences
-sent_list = tokenize.sent_tokenize(review)
-print(sent_list)
-
-summary = [sent_list[i] for i in sent_index]
-
-
-def wordAttentionWeights(sequenceSentence, weights):
+def hanPredict(review, review_label, dataset_name, model_path, n_sentences=3, n_words=5, MAX_FEATURES=200000,
+               MAX_SENTENCE_NUM=15, MAX_WORD_NUM=25):
     """
-    The same function as the AttentionLayer class.
+    This function tests Han Model Neural Network, reads the pretrained parameters and predicts (with a review in input).
+    Also evaluates most attentionable sentences and words thanks to Attention Layer of HAN (it uses weights of some
+    layers of the network).
+    :param review: a text string to evaluate.
+    :param dataset_name: string of dataset name.
+    :param model_path: path where is saved the pretrained file .h5.
+    :param n_sentences: most attentionable sentences.
+    :param n_words: number of most important words to print in this function.
+    :param MAX_FEATURES: same parameter used to preprocessing dataset.
+    :param MAX_SENTENCE_NUM: same parameter used to preprocessing dataset.
+    :param MAX_WORD_NUM: same parameter used to preprocessing dataset.
+    :return: None
     """
-    uit = np.dot(sequenceSentence, weights[0]) + weights[1]
-    uit = np.tanh(uit)
+    # Load model from saved hdf5 file and word index (saved during preprocessing)
+    model = load_model(model_path, custom_objects={'AttentionLayer': AttentionLayer})
+    with open('indices/word_index_' + dataset_name + '.txt', 'rb') as f:
+        word_index = pickle.load(f)
+    stopWords = set(stopwords.words('english'))
 
-    ait = np.dot(uit, weights[2])
-    ait = np.squeeze(ait)
-    ait = np.exp(ait)
-    ait /= np.sum(ait)
+    # We clean review and convert to numeric array
+    review_cleaned = cleanString(review, stopWords)
+    input_array = wordToSeq(review_cleaned, word_index, MAX_SENTENCE_NUM, MAX_WORD_NUM, MAX_FEATURES)
 
-    return ait
+    # We load intermediate models with weights in output capable to evalutae sentence importance
+    sent_att_weights = Model(model.inputs, model.get_layer('sent_attention').output, name='SentenceAttention')
 
-print(' '.join(summary))
+    # We predict now the most important sentences, according to trained network
+    output_array = sent_att_weights.predict(np.resize(input_array, (1, MAX_SENTENCE_NUM, MAX_WORD_NUM)))[1]
 
-# Summary as input for word attention
-summary_cleaned = cleanString(' '.join(summary), stopWords)
-word_input_array = wordToSeq(summary_cleaned, word_index, MAX_SENTENCE_NUM, MAX_WORD_NUM, MAX_FEATURES)
+    # We get n_sentences with most attention in document
+    sent_index = output_array.flatten().argsort()[-n_sentences:]
+    sent_index = np.sort(sent_index)
+    sent_index = sent_index.tolist()
 
-# Create model from word input to output of dense layer right before the attention layer
-hidden_word_encoding_out = Model(inputs=word_encoder.input, outputs=word_encoder.get_layer('word_dense').output)
-# Load weights from trained attention layer
-word_context = word_encoder.get_layer('word_attention').get_weights()
-# Compute output of dense layer
-hidden_word_encodings = hidden_word_encoding_out.predict(word_input_array)
-# Compute context vector using output of dense layer
-ait = wordAttentionWeights(hidden_word_encodings, word_context)
+    # Create summary using n sentences
+    sent_list = tokenize.sent_tokenize(review)
+    summary = [sent_list[i] for i in sent_index]
 
-# Get n words with most attention in document
-n_words = 5
+    # Summary (n most important sentences) as input for word attention
+    summary_cleaned = cleanString(' '.join(summary), stopWords)
+    word_input_array = wordToSeq(summary_cleaned, word_index, MAX_SENTENCE_NUM, MAX_WORD_NUM, MAX_FEATURES)
 
-flattenlist = []
-words_unpadded = []
-for idx, sent in enumerate(tokenize.sent_tokenize(summary_cleaned)):
-    if (idx >= MAX_SENTENCE_NUM):
-        break
-    attword_list = tokenize.word_tokenize(sent.rstrip('.'))
-    ait_short = (1000 * ait[idx][:len(attword_list)]).tolist()
-    words_unpadded.extend(ait_short)
-    flattenlist.extend(attword_list)
+    # We load the word encoder and recreate model for word attention
+    word_encoder = model.get_layer('sent_linking').layer
+    hidden_word_encoding_out = Model(inputs=word_encoder.input, outputs=word_encoder.get_layer('word_dense').output)
 
-words_unpadded = np.array(words_unpadded)
-sorted_wordlist = [flattenlist[i] for i in words_unpadded.argsort()]
+    # Load weights from trained attention layer
+    word_context = word_encoder.get_layer('word_attention').get_weights()
 
-mostAtt_words = []
-i = 0
-for word in reversed(sorted_wordlist):
-    if word not in mostAtt_words:
-        mostAtt_words.append(word)
-        i += 1
-    if (i >= n_words):
-        break
+    # Compute output of dense layer
+    hidden_word_encodings = hidden_word_encoding_out.predict(word_input_array)
+
+    # Compute context vector using output of dense layer
+    a_it = wordAttentionWeights(hidden_word_encodings, word_context)
+
+    # Get n words with most attention in document
+    flattenlist = []
+    words_unpadded = []
+    for idx, sent in enumerate(tokenize.sent_tokenize(summary_cleaned)):
+        if (idx >= MAX_SENTENCE_NUM):
+            break
+        attword_list = tokenize.word_tokenize(sent.rstrip('.'))
+        a_it_short = (1000 * a_it[idx][:len(attword_list)]).tolist()
+        words_unpadded.extend(a_it_short)
+        flattenlist.extend(attword_list)
+
+    words_unpadded = np.array(words_unpadded)
+    sorted_wordlist = [flattenlist[i] for i in words_unpadded.argsort()]
+
+    mostAtt_words = []
+    i = 0
+    for word in reversed(sorted_wordlist):
+        if word not in mostAtt_words:
+            mostAtt_words.append(word)
+            i += 1
+        if (i >= n_words):
+            break
+
+    res = model.predict(np.expand_dims(input_array, axis=0)).flatten()
+    cat = np.argmax(res.flatten())
+
+    print('')
+    print('Review: ' + review)
+
+    if dataset_name == 'yelp_2014':
+        print('Stars: ' + str(review_label))
+        print('')
+        print('Predicted Stars: ' + str(cat + 1))
+        print(res)
+        print('')
+    else:
+        print('Category: ' + str(review_label))
+        print('')
+        print('Predicted Category: ' + str(cat + 1))
+        print(res)
+        print('')
+
+    print(str(n_sentences) + ' most important sentences: ' + str(summary))
+    print(str(n_words) + ' most important words: ' + str(mostAtt_words))
 
 
-res = model.predict(np.expand_dims(input_array, axis=0)).flatten()
-cat = np.argmax(res.flatten()) + 1
+def getRandomReview(container_path):
+    """
+    Function that returns a text and relative label of a review from a test dataset in .csv format.
+    :param container_path: path to .csv file contained some test dataset reviews, with columns 'text' and 'label'
+    :return: review, label_review
+    """
+    data_df = pd.read_csv(container_path)
+    sample = data_df.sample(1)
+    return sample.text.iloc[0], sample.label.iloc[0]
 
-print('Review')
-print(review)
-print('Category')
-print(res)
-print(cat)
-print('Summary')
-print(summary)
-print('Important Words')
-print(mostAtt_words)
+
+if __name__ == '__main__':
+
+    physical_devices = tf.config.list_physical_devices('GPU')
+    tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
+
+    MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
+    MAX_SENTENCE_NUM = 15  # maximum number of sentences in one document
+    MAX_WORD_NUM = 25  # maximum number of words in each sentence
+    EMBED_SIZE = 100  # vector size of word embedding
+    BATCH_SIZE = 50
+    NUM_EPOCHS = 10
+    INIT_LR = 1e-2
+
+    dataset_name = 'yelp_2014'
+    model_path = 'models/model_yelp_2014/20200527-220312.h5'
+    n_sentences = 2
+    n_words = 5
+
+    review, review_label = getRandomReview('datasets/yelp_reviews_container.csv')
+
+    hanPredict(review=review, review_label=review_label, dataset_name=dataset_name, model_path=model_path,
+               n_sentences=n_sentences, n_words=n_words, MAX_FEATURES=MAX_FEATURES, MAX_SENTENCE_NUM=MAX_SENTENCE_NUM,
+               MAX_WORD_NUM=MAX_WORD_NUM)

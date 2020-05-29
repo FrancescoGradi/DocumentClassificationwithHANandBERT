@@ -11,8 +11,8 @@ from nltk.corpus import stopwords
 from utils import cleanString, splitDataframe, wordToSeq, toCategorical
 
 
-def preprocessing(dataset_name, data_cleaned, save_all=False, MAX_FEATURES=200000, MAX_SENTENCE_NUM=40, MAX_WORD_NUM=50,
-                  EMBED_SIZE=100):
+def preprocessing(dataset_name, data_df, save_all=False, cleaned=False, MAX_FEATURES=200000, MAX_SENTENCE_NUM=40,
+                  MAX_WORD_NUM=50, EMBED_SIZE=100):
     '''
     :param dataset_name: a string that represents the name of the dataset (it used to save some stuff).
     :param data_df: dataset in DataFrame Pandas format, with two columns: 'text' and 'label'.
@@ -25,21 +25,21 @@ def preprocessing(dataset_name, data_cleaned, save_all=False, MAX_FEATURES=20000
     '''
 
     # Cleaning text (no uppercase words), removing stopwords
-    '''
-    reviews = []
-    stop_words = set(stopwords.words('english'))
-    data_cleaned = data_df.copy()
+    if not cleaned:
+        reviews = []
+        stop_words = set(stopwords.words('english'))
+        data_cleaned = data_df.copy()
 
-    n = data_df['text'].shape[0]
-    col = data_df.columns.get_loc('text')
-    for i in range(n):
-        reviews.append(cleanString(data_df.iloc[i, col], stop_words))
+        n = data_df['text'].shape[0]
+        col = data_df.columns.get_loc('text')
+        for i in range(n):
+            reviews.append(cleanString(data_df.iloc[i, col], stop_words))
 
-    # We copy our clean reviews in data_cleaned pandas dataframe
+        # We copy our clean reviews in data_cleaned pandas dataframe
+        data_cleaned.loc[:, 'text'] = pd.Series(reviews, index=data_df.index)
+    else:
+        data_cleaned = data_df
 
-    data_cleaned.loc[:, 'text'] = pd.Series(reviews, index=data_df.index)
-
-    '''
     data_cleaned = data_cleaned[["label", "text"]]
     data_cleaned.loc[:, 'label'] = pd.Categorical(data_cleaned.label)
     print(data_cleaned)

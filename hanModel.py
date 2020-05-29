@@ -51,24 +51,23 @@ class AttentionLayer(layers.Layer):
     def compute_mask(self, input, input_mask=None):
         return None
 
-    def call(self, hit, mask=None):
-        # Here, the actual calculation is done
-        uit = K.bias_add(K.dot(hit, self.W), self.b)
-        uit = K.tanh(uit)
+    def call(self, h_it, mask=None):
+        u_it = K.bias_add(K.dot(h_it, self.W), self.b)
+        u_it = K.tanh(u_it)
 
-        ait = K.dot(uit, self.u)
-        ait = K.squeeze(ait, -1)
-        ait = K.exp(ait)
+        a_it = K.dot(u_it, self.u)
+        a_it = K.squeeze(a_it, -1)
+        a_it = K.exp(a_it)
 
         if mask is not None:
-            ait *= K.cast(mask, K.floatx())
+            a_it *= K.cast(mask, K.floatx())
 
-        ait /= K.cast(K.sum(ait, axis=1, keepdims=True) + K.epsilon(), K.floatx())
-        ait = K.expand_dims(ait)
-        weighted_input = hit * ait
+        a_it /= K.cast(K.sum(a_it, axis=1, keepdims=True) + K.epsilon(), K.floatx())
+        a_it = K.expand_dims(a_it)
+        weighted_input = h_it * a_it
 
         if self.return_coefficients:
-            return [K.sum(weighted_input, axis=1), ait]
+            return [K.sum(weighted_input, axis=1), a_it]
         else:
             return K.sum(weighted_input, axis=1)
 

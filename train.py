@@ -22,7 +22,7 @@ from utils import wordAndSentenceCounter
 if __name__ == '__main__':
     physical_devices = tf.config.list_physical_devices('GPU')
     tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
-
+    '''
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 15  # maximum number of sentences in one document
     MAX_WORD_NUM = 25  # maximum number of words in each sentence
@@ -35,8 +35,9 @@ if __name__ == '__main__':
 
     dataset_name = "yelp_2014"
     data_df = pd.read_csv("datasets/" + dataset_name + ".csv")
+    cleaned = True
 
-    '''
+    
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 20  # maximum number of sentences in one document
     MAX_WORD_NUM = 40  # maximum number of words in each sentence
@@ -52,8 +53,9 @@ if __name__ == '__main__':
     data_df = data_df[["rating", "review"]]
     data_df.columns = ["label", "text"]
     
-   
-    
+    cleaned = False
+    '''
+
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 25  # maximum number of sentences in one document
     MAX_WORD_NUM = 40  # maximum number of words in each sentence
@@ -69,9 +71,8 @@ if __name__ == '__main__':
         reviews.append((element['text'].decode('utf-8'), element['label']))
 
     data_df = pd.DataFrame(data=reviews, columns=['text', 'label'])
-     '''
+    cleaned = False
 
-    # wordAndSentenceCounter(data_df=data_df)
 
     if (os.path.isfile('datasets/' + dataset_name + '_cleaned.txt')):
         with open('datasets/' + dataset_name + '_cleaned.txt', 'rb') as f:
@@ -87,7 +88,7 @@ if __name__ == '__main__':
         n_classes = data_cleaned[8]
     else:
         x_train, y_train, x_val, y_val, x_test, y_test, embedding_matrix, word_index, n_classes = preprocessing(
-            dataset_name=dataset_name, data_cleaned=data_df, save_all=True, MAX_FEATURES=MAX_FEATURES,
+            dataset_name=dataset_name, data_df=data_df, save_all=True, cleaned=cleaned, MAX_FEATURES=MAX_FEATURES,
             MAX_SENTENCE_NUM=MAX_SENTENCE_NUM, MAX_WORD_NUM=MAX_WORD_NUM, EMBED_SIZE=EMBED_SIZE)
 
 
@@ -118,7 +119,7 @@ if __name__ == '__main__':
                                 + '.h5'), exist_ok=True)
     model.save('models/model_' + dataset_name + '/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '.h5')
 
-    '''
+
     # determine the number of epochs and then construct the plot title
     N = np.arange(0, NUM_EPOCHS)
     title = "Training Loss and Accuracy on {0} with {1}".format(dataset_name, model.name)
@@ -135,4 +136,3 @@ if __name__ == '__main__':
     plt.ylabel("Loss/Accuracy")
     plt.legend()
     plt.show()
-    '''

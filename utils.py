@@ -139,6 +139,24 @@ def toCategorical(series, class_dict):
     return np.array(y_cat)
 
 
+def wordAttentionWeights(sequence_sentence, weights):
+    """
+    Function to calculate a_it (same of Attention Layer)
+    :param sequence_sentence:
+    :param weights:
+    :return: a_it
+    """
+    u_it = np.dot(sequence_sentence, weights[0]) + weights[1]
+    u_it = np.tanh(u_it)
+
+    a_it = np.dot(u_it, weights[2])
+    a_it = np.squeeze(a_it)
+    a_it = np.exp(a_it)
+    a_it /= np.sum(a_it)
+
+    return a_it
+
+
 def yelpYear(dataset_name, year):
     """
     Select from Yelp complete dataset only rows till a specific year in input and save it in json standard. With large
@@ -169,7 +187,21 @@ def yelpYear(dataset_name, year):
 
     data_cleaned.to_csv('datasets/' + dataset_name + '_' + str(year) + '.csv')
 
+    '''
     files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
     for f in files:
         print(f)
         yelpYear('xa' + f, 2014)
+        
+    dataset_name = 'xab'
+    year = 2014
+    
+    data_df = pd.read_json("datasets/temp/" + dataset_name + ".json", lines=True)
+    data_df = data_df[["stars", "text", "date"]]
+    data_df = data_df[(data_df['date'] > str(year) + '-12-30') | (data_df['date'] < str(year) + '-01-01')]
+    data_df = data_df[["stars", "text"]]
+    data_df.columns = ["label", "text"]
+    
+    data_df.to_csv('datasets/yelp_reviews_container.csv')
+    '''
+
