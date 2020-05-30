@@ -208,6 +208,17 @@ def yelpYear(dataset_name, year):
 
 
 def printAttentionedWordsAndSentences(review, all_sent_index, sent_index, sorted_wordlist, MAX_SENTENCE_NUM):
+    """
+    Utility function for hanPredict that provides a colored terminal printing (thanks to Sty Python library) of most
+    attentioned sentences and words in a predicted review (with partial weights from attention layers of Han network
+    model).
+    :param review: a string of the review.
+    :param all_sent_index: all sentences index.
+    :param sent_index: most important sencentences index.
+    :param sorted_wordlist: most important words list, sorted by importance.
+    :param MAX_SENTENCE_NUM: same parameter of network.
+    :return: None
+    """
 
     sentences = tokenize.sent_tokenize(review)
     all_sent_index = np.array(all_sent_index[:len(sentences)])
