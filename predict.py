@@ -7,7 +7,7 @@ from nltk.corpus import stopwords
 from nltk import tokenize
 
 from hanModel import AttentionLayer, HanModel
-from utils import cleanString, wordToSeq, wordAttentionWeights
+from utils import cleanString, wordToSeq, wordAttentionWeights, printAttentionedWordsAndSentences
 
 import tensorflow as tf
 
@@ -49,9 +49,15 @@ def hanPredict(review, review_label, dataset_name, model_path, n_sentences=3, n_
     sent_index = np.sort(sent_index)
     sent_index = sent_index.tolist()
 
+    all_sent_index = list(reversed(output_array.flatten().argsort()))
+
     # Create summary using n sentences
     sent_list = tokenize.sent_tokenize(review)
-    summary = [sent_list[i] for i in sent_index]
+    try:
+        summary = [sent_list[i] for i in sent_index]
+    except IndexError:
+        print('Number of sentences in this review is to low respect parameter n_sentences choosen.')
+        return
 
     # Summary (n most important sentences) as input for word attention
     summary_cleaned = cleanString(' '.join(summary), stopWords)
@@ -81,17 +87,17 @@ def hanPredict(review, review_label, dataset_name, model_path, n_sentences=3, n_
         words_unpadded.extend(a_it_short)
         flattenlist.extend(attword_list)
 
+
     words_unpadded = np.array(words_unpadded)
     sorted_wordlist = [flattenlist[i] for i in words_unpadded.argsort()]
 
+    sorted_wordlist = list(reversed(sorted_wordlist))
+
     mostAtt_words = []
     i = 0
-    for word in reversed(sorted_wordlist):
-        if word not in mostAtt_words:
-            mostAtt_words.append(word)
-            i += 1
-        if (i >= n_words):
-            break
+    while (i < n_words):
+        mostAtt_words.append(sorted_wordlist[i])
+        i += 1
 
     res = model.predict(np.expand_dims(input_array, axis=0)).flatten()
     cat = np.argmax(res.flatten())
@@ -114,6 +120,9 @@ def hanPredict(review, review_label, dataset_name, model_path, n_sentences=3, n_
 
     print(str(n_sentences) + ' most important sentences: ' + str(summary))
     print(str(n_words) + ' most important words: ' + str(mostAtt_words))
+    print('')
+
+    printAttentionedWordsAndSentences(review, all_sent_index, sent_index, sorted_wordlist, MAX_SENTENCE_NUM)
 
 
 def getRandomReview(container_path):

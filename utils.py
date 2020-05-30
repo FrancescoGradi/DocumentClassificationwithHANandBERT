@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import ijson
 import json
+import sty
 
 from nltk import tokenize
 from nltk.stem import WordNetLemmatizer
@@ -205,3 +206,39 @@ def yelpYear(dataset_name, year):
     data_df.to_csv('datasets/yelp_reviews_container.csv')
     '''
 
+
+def printAttentionedWordsAndSentences(review, all_sent_index, sent_index, sorted_wordlist, MAX_SENTENCE_NUM):
+
+    sentences = tokenize.sent_tokenize(review)
+    all_sent_index = np.array(all_sent_index[:len(sentences)])
+
+    nothing = '     '
+    low = sty.bg.li_blue + '     ' + sty.bg.rs
+    medium = sty.bg(27) + '     ' + sty.bg.rs
+    high = sty.bg.da_blue + '     ' + sty.bg.rs
+
+    high_word, medium_word, low_word = np.array_split(sorted_wordlist, 3)
+    high_sent, medium_sent, low_sent, nothing_sent = np.array_split(all_sent_index, 4)
+
+    sent_color = nothing
+    for idx, sent in enumerate(sentences):
+        if idx in high_sent and idx <= MAX_SENTENCE_NUM:
+            sent_color = high
+        elif idx in medium_sent and idx <= MAX_SENTENCE_NUM:
+            sent_color = medium
+        elif idx in low_sent and idx <= MAX_SENTENCE_NUM:
+            sent_color = low
+        else:
+            sent_color = nothing
+
+        sent_to_print = ''
+        for idy, word in enumerate(tokenize.word_tokenize(sent)):
+            if word in high_word and idx in sent_index:
+                sent_to_print += (sty.bg.da_red + word + sty.bg.rs + ' ')
+            elif word in medium_word and idx in sent_index:
+                sent_to_print += (sty.bg(255, 0, 0) + word + sty.bg.rs + ' ')
+            elif word in low_word and idx in sent_index:
+                sent_to_print += (sty.bg(255, 92, 92) + word + sty.bg.rs + ' ')
+            else:
+                sent_to_print += (word + ' ')
+        print(sent_color, idx, sent_to_print)

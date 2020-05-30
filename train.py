@@ -36,14 +36,14 @@ if __name__ == '__main__':
     dataset_name = "yelp_2014"
     data_df = pd.read_csv("datasets/" + dataset_name + ".csv")
     cleaned = True
-
+    '''
     
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 20  # maximum number of sentences in one document
     MAX_WORD_NUM = 40  # maximum number of words in each sentence
     EMBED_SIZE = 100  # vector size of word embedding
-    BATCH_SIZE = 50
-    NUM_EPOCHS = 20
+    BATCH_SIZE = 64
+    NUM_EPOCHS = 60
     INIT_LR = 1e-2
 
     # Reading JSON dataset with Pandas
@@ -72,7 +72,7 @@ if __name__ == '__main__':
 
     data_df = pd.DataFrame(data=reviews, columns=['text', 'label'])
     cleaned = False
-
+    '''
 
     if (os.path.isfile('datasets/' + dataset_name + '_cleaned.txt')):
         with open('datasets/' + dataset_name + '_cleaned.txt', 'rb') as f:
