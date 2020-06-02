@@ -5,6 +5,7 @@ import pandas as pd
 from tensorflow.keras.models import load_model, Model
 from nltk.corpus import stopwords
 from nltk import tokenize
+from sklearn.metrics import classification_report
 
 from hanModel import AttentionLayer, HanModel
 from utils import cleanString, wordToSeq, wordAttentionWeights, printAttentionedWordsAndSentences
@@ -125,6 +126,40 @@ def hanPredict(review, review_label, dataset_name, model_path, n_sentences=3, n_
     printAttentionedWordsAndSentences(review, all_sent_index, sent_index, sorted_wordlist, MAX_SENTENCE_NUM)
 
 
+def bertPredict():
+    physical_devices = tf.config.list_physical_devices('GPU')
+    tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
+
+    dataset_name = 'imdb_reviews'
+    n_classes = 2
+
+    with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
+        data_cleaned = pickle.load(f)
+
+    train_inputs = data_cleaned[0]
+    train_mask = data_cleaned[1]
+    train_labels = data_cleaned[2]
+    validation_inputs = data_cleaned[3]
+    validation_mask = data_cleaned[4]
+    validation_labels = data_cleaned[5]
+    test_inputs = data_cleaned[6]
+    test_mask = data_cleaned[7]
+    test_labels = data_cleaned[8]
+
+    NUM_EPOCHS = 1
+    BATCH_SIZE = 16
+
+    model = load_model('models/model_imdb_reviews_bert/20200602-210813')
+
+    # evaluate the network
+    print("Evaluating network...")
+    predictions = model.predict(test_inputs, batch_size=BATCH_SIZE)
+    # model.evaluate(test_inputs, test_labels, batch_size=BATCH_SIZE, use_multiprocessing=True)
+    print(predictions)
+    print(classification_report(test_labels, predictions))
+
+
+
 def getRandomReview(container_path):
     """
     Function that returns a text and relative label of a review from a test dataset in .csv format.
@@ -138,6 +173,7 @@ def getRandomReview(container_path):
 
 if __name__ == '__main__':
 
+    '''
     physical_devices = tf.config.list_physical_devices('GPU')
     tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
 
@@ -159,3 +195,6 @@ if __name__ == '__main__':
     hanPredict(review=review, review_label=review_label, dataset_name=dataset_name, model_path=model_path,
                n_sentences=n_sentences, n_words=n_words, MAX_FEATURES=MAX_FEATURES, MAX_SENTENCE_NUM=MAX_SENTENCE_NUM,
                MAX_WORD_NUM=MAX_WORD_NUM)
+    '''
+
+    bertPredict()

@@ -13,13 +13,74 @@ from matplotlib import pyplot as plt
 from tensorflow.keras.optimizers import Adam, SGD
 from sklearn.metrics import classification_report
 from tensorflow.keras.callbacks import TensorBoard, EarlyStopping
+from transformers import TFBertForSequenceClassification
 
 from preprocessing import preprocessing
 from hanModel import HanModel
 from utils import wordAndSentenceCounter
 
 
-if __name__ == '__main__':
+def bertTrain():
+    physical_devices = tf.config.list_physical_devices('GPU')
+    tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
+
+    dataset_name = 'imdb_reviews'
+    n_classes = 2
+
+    with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
+        data_cleaned = pickle.load(f)
+
+    train_inputs = data_cleaned[0]
+    train_mask = data_cleaned[1]
+    train_labels = data_cleaned[2]
+    validation_inputs = data_cleaned[3]
+    validation_mask = data_cleaned[4]
+    validation_labels = data_cleaned[5]
+    test_inputs = data_cleaned[6]
+    test_mask = data_cleaned[7]
+    test_labels = data_cleaned[8]
+
+    NUM_EPOCHS = 1
+    BATCH_SIZE = 16
+
+    model = TFBertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=n_classes,
+                                                            output_attentions=False, output_hidden_states=False)
+    optimizer = Adam()
+    loss = tf.keras.losses.CategoricalCrossentropy()
+    metric = tf.keras.metrics.CategoricalAccuracy(name='accuracy')
+    model.compile(loss=loss, optimizer=optimizer, metrics=[metric])
+    print(model.summary())
+
+    log_dir = "logs/" + dataset_name + "_bert/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    shutil.rmtree(log_dir, ignore_errors=True)
+
+    callbacks = [
+        EarlyStopping(monitor='acc', patience=4, restore_best_weights=True),
+        TensorBoard(log_dir=log_dir, histogram_freq=1, profile_batch=0, update_freq=10),
+    ]
+
+    h = model.fit(train_inputs, train_labels,
+                  validation_data=(validation_inputs, validation_labels),
+                  epochs=NUM_EPOCHS,
+                  batch_size=BATCH_SIZE,
+                  callbacks=callbacks)
+
+    os.makedirs(
+        os.path.dirname('models/model_' + dataset_name + '_bert/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+                        + '.h5'), exist_ok=True)
+    model.save('models/model_' + dataset_name + '_bert/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),
+               save_format='tf')
+
+    # evaluate the network
+    print("Evaluating network...")
+    predictions = model.predict(test_inputs, batch_size=BATCH_SIZE)
+    model.evaluate(test_inputs, test_labels, batch_size=BATCH_SIZE, use_multiprocessing=True)
+    print(predictions)
+    print(test_labels)
+    print(classification_report(test_labels.argmax(axis=1), predictions.argmax(axis=1)))
+
+
+def hanTrain():
     physical_devices = tf.config.list_physical_devices('GPU')
     tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
     '''
@@ -136,3 +197,7 @@ if __name__ == '__main__':
     plt.ylabel("Loss/Accuracy")
     plt.legend()
     plt.show()
+
+
+if __name__ == '__main__':
+    bertTrain()

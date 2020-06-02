@@ -6,7 +6,13 @@ import pandas as pd
 import numpy as np
 
 from keras.preprocessing.text import Tokenizer, text_to_word_sequence
+from keras.preprocessing.sequence import pad_sequences
+import tensorflow_datasets as tfds
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.utils import to_categorical
+from sklearn.model_selection import train_test_split
 from nltk.corpus import stopwords
+from transformers import BertTokenizer, TFBertForSequenceClassification
 
 from utils import cleanString, splitDataframe, wordToSeq, toCategorical
 
@@ -123,3 +129,92 @@ def preprocessing(dataset_name, data_df, save_all=False, cleaned=False, MAX_FEAT
 
 
     return x_train, y_train, x_val, y_val, x_test, y_test, embedding_matrix, word_index, n_classes
+
+
+def bertPreprocessing(dataset_name, data_df, save_all=False, MAX_LEN=128):
+    '''
+
+
+    '''
+
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    stop_words = set(stopwords.words('english'))
+
+    sentences = data_df.text.values
+    labels = to_categorical(data_df.label.values)
+
+    # Using Bert tokenizer and encoder
+
+    input_ids = []
+    for sent in sentences:
+        cleaned_sent = cleanString(sent, stop_words)
+        input_ids.append(tokenizer.encode(sent, add_special_tokens=True))
+
+    print(sentences[0])
+    print(input_ids[0])
+
+    # Padding
+    input_ids = pad_sequences(input_ids, maxlen=MAX_LEN, dtype='long', value=0, truncating='post', padding='post')
+    print(input_ids[0])
+
+    # Attention Mask
+    attention_masks = []
+    for sent in input_ids:
+        mask = [int(token_id > 0) for token_id in sent]
+        attention_masks.append(mask)
+    print(attention_masks[0])
+
+    # Train/Validation/Test splitting
+    train_inputs, validation_inputs, train_labels, validation_labels = train_test_split(input_ids, labels,
+                                                                                        random_state=1444,
+                                                                                        test_size=0.2)
+    validation_inputs, test_inputs, validation_labels, test_labels = train_test_split(validation_inputs,
+                                                                                      validation_labels,
+                                                                                      random_state=1444,
+                                                                                      test_size=0.5)
+
+    train_mask, validation_mask, _, _ = train_test_split(attention_masks, labels, random_state=1444, test_size=0.2)
+    validation_mask, test_mask, _, _ = train_test_split(validation_mask, _, random_state=1444, test_size=0.5)
+
+    train_inputs = np.array(train_inputs)
+    validation_inputs = np.array(validation_inputs)
+    test_inputs = np.array(test_inputs)
+
+    train_labels = np.array(train_labels)
+    validation_labels = np.array(validation_labels)
+    test_labels = np.array(test_labels)
+
+    train_mask = np.array(train_mask)
+    validation_mask = np.array(validation_mask)
+    test_mask = np.array(test_mask)
+
+    print(len(train_inputs))
+    print(len(validation_inputs))
+    print(len(test_inputs))
+
+    print(len(train_labels))
+    print(len(validation_labels))
+    print(len(test_labels))
+
+    print(len(train_mask))
+    print(len(validation_mask))
+    print(len(test_mask))
+
+    if save_all is True:
+        os.makedirs(os.path.dirname('datasets/' + dataset_name + '_bert_cleaned.txt'), exist_ok=True)
+        with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'wb') as f:
+            pickle.dump([train_inputs, train_mask, train_labels, validation_inputs, validation_mask, validation_labels,
+                         test_inputs, test_mask, test_labels], f)
+
+
+if __name__ == '__main__':
+
+    dataset_name = 'imdb_reviews'
+    ds = tfds.load(dataset_name, split='train')
+    reviews = []
+    for element in ds.as_numpy_iterator():
+        reviews.append((element['text'].decode('utf-8'), element['label']))
+
+    data_df = pd.DataFrame(data=reviews, columns=['text', 'label'])
+
+    bertPreprocessing(dataset_name=dataset_name, data_df=data_df, save_all=True)
