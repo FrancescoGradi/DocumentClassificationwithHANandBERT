@@ -1,28 +1,159 @@
 import pandas as pd
 import numpy as np
+import tensorflow_datasets as tfds
+import tensorflow as tf
+
 import datetime
 import os.path
 import pathlib
 import shutil
 import pickle
 import json
-import tensorflow_datasets as tfds
-import tensorflow as tf
+import time
+import datetime
+import torch
 
 from matplotlib import pyplot as plt
 from tensorflow.keras.optimizers import Adam, SGD
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, accuracy_score
 from tensorflow.keras.callbacks import TensorBoard, EarlyStopping
-from transformers import TFBertForSequenceClassification
+from tensorflow.keras.layers import GlobalAveragePooling1D, Dense, Input
+from tensorflow.keras.models import Model
+from transformers import TFBertForSequenceClassification, TFBertModel, BertConfig, TFBertForTokenClassification, \
+    BertForSequenceClassification
+from torch import cuda
+from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 
 from preprocessing import preprocessing
 from hanModel import HanModel
-from utils import wordAndSentenceCounter
+from bertModel import BertModel
+from utils import wordAndSentenceCounter, format_time, loss_fn
+
+
+def bertTrainNew():
+    device = 'cuda' if cuda.is_available() else 'cpu'
+
+    dataset_name = 'imdb_reviews'
+    n_classes = 2
+
+    with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
+        data_cleaned = pickle.load(f)
+
+    training_set = data_cleaned[0]
+    validation_set = data_cleaned[1]
+    test_set = data_cleaned[2]
+    MAX_LEN = data_cleaned[3]
+
+    TRAIN_BATCH_SIZE = 16
+    VALID_BATCH_SIZE = 8
+    EPOCHS = 4
+    LEARNING_RATE = 1e-05
+
+    train_params = {'batch_size': TRAIN_BATCH_SIZE,
+                    'shuffle': True,
+                    'num_workers': 0
+                    }
+
+    test_params = {'batch_size': VALID_BATCH_SIZE,
+                   'shuffle': True,
+                   'num_workers': 0
+                   }
+
+    training_loader = DataLoader(training_set, **train_params)
+    validation_loader = DataLoader(validation_set, **test_params)
+    testing_loader = DataLoader(test_set, **test_params)
+
+    model = BertModel(n_classes=n_classes, dropout=0.3)
+    model.to(device)
+
+    optimizer = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
+
+    # Stats with Tensorboard
+    log_dir = "logs/" + dataset_name + "_bert/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    shutil.rmtree(log_dir, ignore_errors=True)
+    writer = SummaryWriter(log_dir=log_dir)
+
+    total_t0 = time.time()
+
+    for epoch in range(EPOCHS):
+        print("")
+        print('================ Epoch {:} / {:} ================'.format(epoch + 1, EPOCHS))
+        print('Training...')
+        t0 = time.time()
+        total_train_loss = 0
+        model.train()
+
+        for step, batch in enumerate(training_loader):
+
+            ids = batch['ids'].to(device, dtype=torch.long)
+            mask = batch['mask'].to(device, dtype=torch.long)
+            token_type_ids = batch['token_type_ids'].to(device, dtype=torch.long)
+            targets = batch['targets'].to(device, dtype=torch.float)
+
+            model.zero_grad()
+
+            outputs = model(ids, mask, token_type_ids)
+            loss = loss_fn(outputs, targets)
+
+            if step % 50 == 0 and not step == 0:
+                # Calculate elapsed time in minutes.
+                elapsed = format_time(time.time() - t0)
+                # Report progress.
+                print('  Batch {:>5,}  of  {:>5,}.   Loss: {:>20,}   Elapsed: {:}.'.format(step, len(training_loader), loss,
+                                                                                     elapsed))
+                writer.add_scalar('batch_loss', loss, step)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        training_time = format_time(time.time() - t0)
+        print("  Training epoch took: {:}".format(training_time))
+        print("")
+        print("Running Validation...")
+
+        t0 = time.time()
+
+        model.eval()
+
+        total_eval_accuracy = 0
+        total_eval_loss = 0
+
+        fin_targets = []
+        fin_outputs = []
+        with torch.no_grad():
+            for batch in validation_loader:
+
+                ids = batch['ids'].to(device, dtype=torch.long)
+                mask = batch['mask'].to(device, dtype=torch.long)
+                token_type_ids = batch['token_type_ids'].to(device, dtype=torch.long)
+                targets = batch['targets'].to(device, dtype=torch.float)
+
+                outputs = model(ids, mask, token_type_ids)
+
+                total_eval_loss += loss_fn(outputs, targets)
+
+                fin_targets.extend(targets.cpu().detach().numpy().tolist())
+                fin_outputs.extend(torch.sigmoid(outputs).cpu().detach().numpy().tolist())
+
+        valid_loss = total_eval_loss / len(validation_loader)
+        fin_outputs = np.array(fin_outputs) >= 0.5
+        accuracy = accuracy_score(fin_targets, fin_outputs)
+        print("  Validation Accuracy: {0:.2f}".format(accuracy))
+        print("  Validation Loss: {0:.2f}".format(valid_loss))
+        writer.add_scalar('epoch_loss', valid_loss, epoch)
+        writer.add_scalar('epoch_accuracy', accuracy, epoch)
+
+
+    print("")
+    print("Training complete!")
+
+    print("Total training took {:} (h:mm:ss)".format(format_time(time.time() - total_t0)))
+
 
 
 def bertTrain():
-    physical_devices = tf.config.list_physical_devices('GPU')
-    tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
 
     dataset_name = 'imdb_reviews'
     n_classes = 2
@@ -42,27 +173,42 @@ def bertTrain():
 
     NUM_EPOCHS = 1
     BATCH_SIZE = 16
+    MAX_LEN = 128
 
-    model = TFBertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=n_classes,
-                                                            output_attentions=False, output_hidden_states=False)
+    config = BertConfig.from_pretrained('bert-base-uncased', num_labels=n_classes)
+    model = BertForSequenceClassification('bert-base_uncased')
+
+    config = BertConfig.from_pretrained('bert-base-uncased', num_labels=n_classes)
+    model = TFBertForSequenceClassification.from_pretrained('bert-base-uncased', config=config)
+
+    
+    token_inputs = Input((MAX_LEN, ), dtype=tf.int32, name='input_word_ids')
+    bert_layers = TFBertModel.from_pretrained("bert-base-uncased", from_pt=True)
+    bert_output, _ = bert_layers(token_inputs)
+    pooling = GlobalAveragePooling1D()(bert_output)
+    dense = Dense(MAX_LEN, activation='relu')(pooling)
+    cls_output = Dense(n_classes, activation='softmax', name='cls_output')(dense)
+
+    model = Model(token_inputs, cls_output)
+
+
     optimizer = Adam()
     loss = tf.keras.losses.CategoricalCrossentropy()
-    metric = tf.keras.metrics.CategoricalAccuracy(name='accuracy')
-    model.compile(loss=loss, optimizer=optimizer, metrics=[metric])
+    metric = tf.keras.metrics.BinaryAccuracy(name='accuracy')
+    model.compile(loss=loss, optimizer=optimizer, metrics=['acc'])
     print(model.summary())
 
     log_dir = "logs/" + dataset_name + "_bert/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     shutil.rmtree(log_dir, ignore_errors=True)
 
     callbacks = [
-        EarlyStopping(monitor='acc', patience=4, restore_best_weights=True),
-        TensorBoard(log_dir=log_dir, histogram_freq=1, profile_batch=0, update_freq=10),
+        EarlyStopping(monitor='val_accuracy', patience=4, restore_best_weights=True),
+        TensorBoard(log_dir=log_dir, histogram_freq=1, profile_batch=0, update_freq=50),
     ]
 
     h = model.fit(train_inputs, train_labels,
                   validation_data=(validation_inputs, validation_labels),
                   epochs=NUM_EPOCHS,
-                  batch_size=BATCH_SIZE,
                   callbacks=callbacks)
 
     os.makedirs(
@@ -78,6 +224,7 @@ def bertTrain():
     print(predictions)
     print(test_labels)
     print(classification_report(test_labels.argmax(axis=1), predictions.argmax(axis=1)))
+    
 
 
 def hanTrain():
@@ -200,4 +347,4 @@ def hanTrain():
 
 
 if __name__ == '__main__':
-    bertTrain()
+    bertTrainNew()

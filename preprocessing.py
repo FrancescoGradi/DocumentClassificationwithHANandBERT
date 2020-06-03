@@ -4,17 +4,18 @@ import os.path
 
 import pandas as pd
 import numpy as np
+import tensorflow as tf
+import tensorflow_datasets as tfds
 
 from keras.preprocessing.text import Tokenizer, text_to_word_sequence
 from keras.preprocessing.sequence import pad_sequences
-import tensorflow_datasets as tfds
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
 from nltk.corpus import stopwords
 from transformers import BertTokenizer, TFBertForSequenceClassification
 
-from utils import cleanString, splitDataframe, wordToSeq, toCategorical
+from utils import cleanString, splitDataframe, wordToSeq, toCategorical, CustomDataset
 
 
 def preprocessing(dataset_name, data_df, save_all=False, cleaned=False, MAX_FEATURES=200000, MAX_SENTENCE_NUM=40,
@@ -133,7 +134,7 @@ def preprocessing(dataset_name, data_df, save_all=False, cleaned=False, MAX_FEAT
 
 def bertPreprocessing(dataset_name, data_df, save_all=False, MAX_LEN=128):
     '''
-
+    Old
 
     '''
 
@@ -176,17 +177,17 @@ def bertPreprocessing(dataset_name, data_df, save_all=False, MAX_LEN=128):
     train_mask, validation_mask, _, _ = train_test_split(attention_masks, labels, random_state=1444, test_size=0.2)
     validation_mask, test_mask, _, _ = train_test_split(validation_mask, _, random_state=1444, test_size=0.5)
 
-    train_inputs = np.array(train_inputs)
-    validation_inputs = np.array(validation_inputs)
-    test_inputs = np.array(test_inputs)
+    train_inputs = tf.cast(train_inputs, tf.int32)
+    validation_inputs = tf.cast(validation_inputs, tf.int32)
+    test_inputs = tf.cast(test_inputs, tf.int32)
 
     train_labels = np.array(train_labels)
     validation_labels = np.array(validation_labels)
     test_labels = np.array(test_labels)
 
-    train_mask = np.array(train_mask)
-    validation_mask = np.array(validation_mask)
-    test_mask = np.array(test_mask)
+    train_mask = tf.cast(train_mask, tf.int32)
+    validation_mask = tf.cast(validation_mask, tf.int32)
+    test_mask = tf.cast(test_mask, tf.int32)
 
     print(len(train_inputs))
     print(len(validation_inputs))
@@ -207,7 +208,33 @@ def bertPreprocessing(dataset_name, data_df, save_all=False, MAX_LEN=128):
                          test_inputs, test_mask, test_labels], f)
 
 
+def bertPreprocessingNew(dataset_name, data_df, MAX_LEN=128, save_all=True):
+
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
+    train_size = 0.8
+    train_dataset = data_df.sample(frac=train_size, random_state=200).reset_index(drop=True)
+    tmp_dataset = data_df.drop(train_dataset.index).reset_index(drop=True)
+    test_dataset = tmp_dataset.sample(frac=0.5, random_state=200).reset_index(drop=True)
+    val_dataset = tmp_dataset.drop(test_dataset.index).reset_index(drop=True)
+
+    print("FULL Dataset: {}".format(data_df.shape))
+    print("TRAIN Dataset: {}".format(train_dataset.shape))
+    print("TEST Dataset: {}".format(test_dataset.shape))
+    print("VALID Dataset: {}".format(val_dataset.shape))
+
+    training_set = CustomDataset(train_dataset, tokenizer, MAX_LEN)
+    validation_set = CustomDataset(val_dataset, tokenizer, MAX_LEN)
+    test_set = CustomDataset(test_dataset, tokenizer, MAX_LEN)
+
+    if save_all is True:
+        os.makedirs(os.path.dirname('datasets/' + dataset_name + '_bert_cleaned.txt'), exist_ok=True)
+        with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'wb') as f:
+            pickle.dump([training_set, validation_set, test_set, MAX_LEN], f)
+
+
 if __name__ == '__main__':
+
 
     dataset_name = 'imdb_reviews'
     ds = tfds.load(dataset_name, split='train')
@@ -217,4 +244,11 @@ if __name__ == '__main__':
 
     data_df = pd.DataFrame(data=reviews, columns=['text', 'label'])
 
-    bertPreprocessing(dataset_name=dataset_name, data_df=data_df, save_all=True)
+    '''
+    dataset_name = "imdb_complete"
+    data_df = pd.read_json("datasets/" + dataset_name + ".json")
+    data_df = data_df[["rating", "review"]]
+    data_df.columns = ["label", "text"]
+    '''
+
+    bertPreprocessingNew(dataset_name=dataset_name, data_df=data_df, save_all=True)

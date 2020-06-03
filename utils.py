@@ -3,10 +3,15 @@ import numpy as np
 import ijson
 import json
 import sty
+import torch
+import time
+import datetime
 
 from nltk import tokenize
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
+from tensorflow.keras.utils import to_categorical
+from torch.utils.data import Dataset
 
 
 def cleanString(text, stop_words):
@@ -253,3 +258,54 @@ def printAttentionedWordsAndSentences(review, all_sent_index, sent_index, sorted
             else:
                 sent_to_print += (word + ' ')
         print(sent_color, idx, sent_to_print)
+
+
+def format_time(elapsed):
+    '''
+    Takes a time in seconds and returns a string hh:mm:ss
+    '''
+    # Round to the nearest second.
+    elapsed_rounded = int(round((elapsed)))
+
+    # Format as hh:mm:ss
+    return str(datetime.timedelta(seconds=elapsed_rounded))
+
+
+def loss_fn(outputs, targets):
+    return torch.nn.BCEWithLogitsLoss()(outputs, targets)
+
+
+class CustomDataset(Dataset):
+
+    def __init__(self, dataframe, tokenizer, max_len):
+        self.tokenizer = tokenizer
+        self.data = dataframe
+        self.text = dataframe.text
+        self.label = to_categorical(self.data.label)
+        self.max_len = max_len
+
+    def __len__(self):
+        return len(self.text)
+
+    def __getitem__(self, index):
+        text = str(self.text[index])
+        text = " ".join(text.split())
+
+        inputs = self.tokenizer.encode_plus(
+            text,
+            None,
+            add_special_tokens=True,
+            max_length=self.max_len,
+            pad_to_max_length=True,
+            return_token_type_ids=True
+        )
+        ids = inputs['input_ids']
+        mask = inputs['attention_mask']
+        token_type_ids = inputs["token_type_ids"]
+
+        return {
+            'ids': torch.tensor(ids, dtype=torch.long),
+            'mask': torch.tensor(mask, dtype=torch.long),
+            'token_type_ids': torch.tensor(token_type_ids, dtype=torch.long),
+            'targets': torch.tensor(self.label[index], dtype=torch.float)
+        }
