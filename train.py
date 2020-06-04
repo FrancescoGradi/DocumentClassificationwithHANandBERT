@@ -34,8 +34,8 @@ from utils import wordAndSentenceCounter, format_time, loss_fn
 def bertTrainNew():
     device = 'cuda' if cuda.is_available() else 'cpu'
 
-    dataset_name = 'imdb_reviews'
-    n_classes = 2
+    dataset_name = 'imdb_complete'
+    n_classes = 11
 
     with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
         data_cleaned = pickle.load(f)
@@ -45,9 +45,9 @@ def bertTrainNew():
     test_set = data_cleaned[2]
     MAX_LEN = data_cleaned[3]
 
-    TRAIN_BATCH_SIZE = 16
-    VALID_BATCH_SIZE = 8
-    EPOCHS = 2
+    TRAIN_BATCH_SIZE = 8
+    VALID_BATCH_SIZE = 4
+    EPOCHS = 3
     LEARNING_RATE = 1e-05
 
     train_params = {'batch_size': TRAIN_BATCH_SIZE,
@@ -96,13 +96,15 @@ def bertTrainNew():
             outputs = model(ids, mask, token_type_ids)
             loss = criterion(outputs, torch.max(targets, 1)[1])
 
-            if step % 50 == 0 and not step == 0:
+            if step % 200 == 0 and not step == 0:
                 # Calculate elapsed time in minutes.
                 elapsed = format_time(time.time() - t0)
                 # Report progress.
-                print('  Batch {:>5,}  of  {:>5,}.   Loss: {:>20,}   Elapsed: {:}.'.format(step, len(training_loader),
+                print('  Batch {:>5,}  of  {:>5,}.   Loss: {:>19,}   Elapsed: {:}.'.format(step, len(training_loader),
                                                                                            loss, elapsed))
+
                 writer.add_scalar('batch_loss', loss, step + (epoch * len(training_loader)))
+
 
             optimizer.zero_grad()
             loss.backward()

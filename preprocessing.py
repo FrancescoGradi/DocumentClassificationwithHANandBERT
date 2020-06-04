@@ -235,7 +235,7 @@ def bertPreprocessingNew(dataset_name, data_df, MAX_LEN=128, save_all=True):
 
 if __name__ == '__main__':
 
-
+    '''
     dataset_name = 'imdb_reviews'
     ds = tfds.load(dataset_name, split='train')
     reviews = []
@@ -249,7 +249,7 @@ if __name__ == '__main__':
     data_df = pd.read_json("datasets/" + dataset_name + ".json")
     data_df = data_df[["rating", "review"]]
     data_df.columns = ["label", "text"]
-    '''
+
 
     #bertPreprocessing(dataset_name=dataset_name, data_df=data_df, save_all=True)
-    bertPreprocessingNew(dataset_name=dataset_name, data_df=data_df, save_all=True)
+    bertPreprocessingNew(dataset_name=dataset_name, data_df=data_df, save_all=True, MAX_LEN=128)
