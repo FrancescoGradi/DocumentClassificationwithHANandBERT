@@ -1,14 +1,19 @@
 import pickle
+import torch
 import numpy as np
 import pandas as pd
 
 from tensorflow.keras.models import load_model, Model
 from nltk.corpus import stopwords
 from nltk import tokenize
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, accuracy_score
+from torch import cuda
+from torch.utils.data import DataLoader
+from transformers import BertTokenizer
 
 from hanModel import AttentionLayer, HanModel
-from utils import cleanString, wordToSeq, wordAttentionWeights, printAttentionedWordsAndSentences
+from bertModel import BertModel
+from utils import cleanString, wordToSeq, wordAttentionWeights, printAttentionedWordsAndSentences, CustomDataset
 
 import tensorflow as tf
 
@@ -126,9 +131,52 @@ def hanPredict(review, review_label, dataset_name, model_path, n_sentences=3, n_
     printAttentionedWordsAndSentences(review, all_sent_index, sent_index, sorted_wordlist, MAX_SENTENCE_NUM)
 
 
-def bertPredict():
-    physical_devices = tf.config.list_physical_devices('GPU')
-    tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
+def bertPredict(text, label):
+
+    device = torch.device('cpu')
+
+    dataset_name = 'imdb_reviews'
+    n_classes = 2
+
+    MAX_LEN = 128
+    TEST_BATCH_SIZE = 8
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    pred_data = pd.DataFrame(data={'text': [text], 'label': [label]})
+    predict = CustomDataset(pred_data, tokenizer, MAX_LEN)
+
+    test_params = {'batch_size': TEST_BATCH_SIZE,
+                   'shuffle': True,
+                   'num_workers': 0
+                   }
+
+    testing_loader = DataLoader(predict, **test_params)
+
+    model = BertModel(n_classes=n_classes, dropout=0.3)
+    model.load_state_dict(torch.load('models/model_imdb_reviews_bert/20200604-141128', map_location=device))
+    model.eval()
+
+    for batch in testing_loader:
+        ids = batch['ids']
+        mask = batch['mask']
+        token_type_ids = batch['token_type_ids']
+        print(ids)
+        print(mask)
+        print(token_type_ids)
+
+        output = model(ids, mask, token_type_ids)
+        output = torch.softmax(output, dim=1).detach().numpy()
+
+        output = np.array(output)
+
+        print(output)
+
+        print("True Label: {:}".format(label))
+        print("Predicted Label: {:}".format(output.argmax(axis=1)))
+
+
+def bertEvaluate():
+
+    device = 'cuda' if cuda.is_available() else 'cpu'
 
     dataset_name = 'imdb_reviews'
     n_classes = 2
@@ -136,28 +184,56 @@ def bertPredict():
     with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
         data_cleaned = pickle.load(f)
 
-    train_inputs = data_cleaned[0]
-    train_mask = data_cleaned[1]
-    train_labels = data_cleaned[2]
-    validation_inputs = data_cleaned[3]
-    validation_mask = data_cleaned[4]
-    validation_labels = data_cleaned[5]
-    test_inputs = data_cleaned[6]
-    test_mask = data_cleaned[7]
-    test_labels = data_cleaned[8]
+    test_set = data_cleaned[2]
+    MAX_LEN = data_cleaned[3]
 
-    NUM_EPOCHS = 1
-    BATCH_SIZE = 16
+    TEST_BATCH_SIZE = 8
 
-    model = load_model('models/model_imdb_reviews_bert/20200602-210813')
+    test_params = {'batch_size': TEST_BATCH_SIZE,
+                   'shuffle': True,
+                   'num_workers': 0
+                   }
+
+    testing_loader = DataLoader(test_set, **test_params)
+
+    model = BertModel(n_classes=n_classes, dropout=0.3)
+    model.load_state_dict(torch.load('models/model_imdb_reviews_bert/20200604-141128'))
+    model.to(device)
+    model.eval()
+    criterion = torch.nn.CrossEntropyLoss()
 
     # evaluate the network
-    print("Evaluating network...")
-    predictions = model.predict(test_inputs, batch_size=BATCH_SIZE)
-    # model.evaluate(test_inputs, test_labels, batch_size=BATCH_SIZE, use_multiprocessing=True)
-    print(predictions)
-    print(classification_report(test_labels, predictions))
+    print("Evaluating network on Test Set")
+    total_eval_loss = 0
+    fin_targets = []
+    fin_outputs = []
+    with torch.no_grad():
+        for batch in testing_loader:
+            ids = batch['ids'].to(device, dtype=torch.long)
+            mask = batch['mask'].to(device, dtype=torch.long)
+            token_type_ids = batch['token_type_ids'].to(device, dtype=torch.long)
+            targets = batch['targets'].to(device, dtype=torch.long)
 
+            outputs = model(ids, mask, token_type_ids)
+
+            total_eval_loss += criterion(outputs, torch.max(targets, 1)[1])
+
+            fin_targets.extend(targets.cpu().detach().numpy().tolist())
+            fin_outputs.extend(torch.softmax(outputs, dim=1).cpu().detach().numpy().tolist())
+
+    valid_loss = total_eval_loss / len(testing_loader)
+
+    fin_outputs = np.array(fin_outputs)
+    fin_targets = np.array(fin_targets)
+
+    accuracy = accuracy_score(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1))
+
+    print("")
+    print("  Test Accuracy: {0:.2f}".format(accuracy))
+    print("  Test Loss: {0:.2f}".format(valid_loss))
+    print("")
+
+    print(classification_report(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1)))
 
 
 def getRandomReview(container_path):
@@ -197,4 +273,4 @@ if __name__ == '__main__':
                MAX_WORD_NUM=MAX_WORD_NUM)
     '''
 
-    bertPredict()
+    bertEvaluate()

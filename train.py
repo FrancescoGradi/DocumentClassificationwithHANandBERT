@@ -17,7 +17,7 @@ from matplotlib import pyplot as plt
 from tensorflow.keras.optimizers import Adam, SGD
 from sklearn.metrics import classification_report, accuracy_score
 from tensorflow.keras.callbacks import TensorBoard, EarlyStopping
-from tensorflow.keras.layers import GlobalAveragePooling1D, Dense, Input
+from tensorflow.keras.layers import GlobalAveragePooling1D, Dense, Input, Dropout
 from tensorflow.keras.models import Model
 from transformers import TFBertForSequenceClassification, TFBertModel, BertConfig, TFBertForTokenClassification, \
     BertForSequenceClassification
@@ -47,7 +47,7 @@ def bertTrainNew():
 
     TRAIN_BATCH_SIZE = 16
     VALID_BATCH_SIZE = 8
-    EPOCHS = 4
+    EPOCHS = 2
     LEARNING_RATE = 1e-05
 
     train_params = {'batch_size': TRAIN_BATCH_SIZE,
@@ -68,6 +68,7 @@ def bertTrainNew():
     model.to(device)
 
     optimizer = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
+    criterion = torch.nn.CrossEntropyLoss()
 
     # Stats with Tensorboard
     log_dir = "logs/" + dataset_name + "_bert/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -78,10 +79,9 @@ def bertTrainNew():
 
     for epoch in range(EPOCHS):
         print("")
-        print('================ Epoch {:} / {:} ================'.format(epoch + 1, EPOCHS))
+        print('============================== Epoch {:} / {:} =============================='.format(epoch + 1, EPOCHS))
         print('Training...')
         t0 = time.time()
-        total_train_loss = 0
         model.train()
 
         for step, batch in enumerate(training_loader):
@@ -89,20 +89,20 @@ def bertTrainNew():
             ids = batch['ids'].to(device, dtype=torch.long)
             mask = batch['mask'].to(device, dtype=torch.long)
             token_type_ids = batch['token_type_ids'].to(device, dtype=torch.long)
-            targets = batch['targets'].to(device, dtype=torch.float)
+            targets = batch['targets'].to(device, dtype=torch.long)
 
             model.zero_grad()
 
             outputs = model(ids, mask, token_type_ids)
-            loss = loss_fn(outputs, targets)
+            loss = criterion(outputs, torch.max(targets, 1)[1])
 
             if step % 50 == 0 and not step == 0:
                 # Calculate elapsed time in minutes.
                 elapsed = format_time(time.time() - t0)
                 # Report progress.
-                print('  Batch {:>5,}  of  {:>5,}.   Loss: {:>20,}   Elapsed: {:}.'.format(step, len(training_loader), loss,
-                                                                                     elapsed))
-                writer.add_scalar('batch_loss', loss, step)
+                print('  Batch {:>5,}  of  {:>5,}.   Loss: {:>20,}   Elapsed: {:}.'.format(step, len(training_loader),
+                                                                                           loss, elapsed))
+                writer.add_scalar('batch_loss', loss, step + (epoch * len(training_loader)))
 
             optimizer.zero_grad()
             loss.backward()
@@ -128,29 +128,33 @@ def bertTrainNew():
                 ids = batch['ids'].to(device, dtype=torch.long)
                 mask = batch['mask'].to(device, dtype=torch.long)
                 token_type_ids = batch['token_type_ids'].to(device, dtype=torch.long)
-                targets = batch['targets'].to(device, dtype=torch.float)
+                targets = batch['targets'].to(device, dtype=torch.long)
 
                 outputs = model(ids, mask, token_type_ids)
 
-                total_eval_loss += loss_fn(outputs, targets)
+                total_eval_loss += criterion(outputs, torch.max(targets, 1)[1])
 
                 fin_targets.extend(targets.cpu().detach().numpy().tolist())
-                fin_outputs.extend(torch.sigmoid(outputs).cpu().detach().numpy().tolist())
+                fin_outputs.extend(torch.softmax(outputs, dim=1).cpu().detach().numpy().tolist())
 
         valid_loss = total_eval_loss / len(validation_loader)
-        fin_outputs = np.array(fin_outputs) >= 0.5
-        accuracy = accuracy_score(fin_targets, fin_outputs)
+
+        fin_outputs = np.array(fin_outputs)
+        fin_targets =np.array(fin_targets)
+
+        accuracy = accuracy_score(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1))
+
         print("  Validation Accuracy: {0:.2f}".format(accuracy))
         print("  Validation Loss: {0:.2f}".format(valid_loss))
         writer.add_scalar('epoch_loss', valid_loss, epoch)
         writer.add_scalar('epoch_accuracy', accuracy, epoch)
 
-
     print("")
     print("Training complete!")
-
+    print("Saving model...")
+    torch.save(model.state_dict(),
+               'models/model_' + dataset_name + '_bert/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
     print("Total training took {:} (h:mm:ss)".format(format_time(time.time() - total_t0)))
-
 
 
 def bertTrain():
@@ -175,22 +179,23 @@ def bertTrain():
     BATCH_SIZE = 16
     MAX_LEN = 128
 
-    config = BertConfig.from_pretrained('bert-base-uncased', num_labels=n_classes)
-    model = BertForSequenceClassification('bert-base_uncased')
+    print(train_labels)
+
 
     config = BertConfig.from_pretrained('bert-base-uncased', num_labels=n_classes)
     model = TFBertForSequenceClassification.from_pretrained('bert-base-uncased', config=config)
 
+    '''
     
-    token_inputs = Input((MAX_LEN, ), dtype=tf.int32, name='input_word_ids')
-    bert_layers = TFBertModel.from_pretrained("bert-base-uncased", from_pt=True)
+    token_inputs = Input((MAX_LEN), dtype=tf.int32, name='input_word_ids')
+    bert_layers = TFBertModel.from_pretrained("bert-base-uncased")
     bert_output, _ = bert_layers(token_inputs)
-    pooling = GlobalAveragePooling1D()(bert_output)
-    dense = Dense(MAX_LEN, activation='relu')(pooling)
-    cls_output = Dense(n_classes, activation='softmax', name='cls_output')(dense)
+    dense = Dense(128, activation='relu')(bert_output)
+    dense_drop = Dropout(rate=0.2, name='dropout')(dense)
+    cls_output = Dense(n_classes, activation='softmax', name='cls_output')(dense_drop)
 
     model = Model(token_inputs, cls_output)
-
+    '''
 
     optimizer = Adam()
     loss = tf.keras.losses.CategoricalCrossentropy()

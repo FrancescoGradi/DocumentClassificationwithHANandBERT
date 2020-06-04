@@ -251,4 +251,5 @@ if __name__ == '__main__':
     data_df.columns = ["label", "text"]
     '''
 
+    #bertPreprocessing(dataset_name=dataset_name, data_df=data_df, save_all=True)
     bertPreprocessingNew(dataset_name=dataset_name, data_df=data_df, save_all=True)
