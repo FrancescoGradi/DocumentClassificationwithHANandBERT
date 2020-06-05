@@ -131,12 +131,9 @@ def hanPredict(review, review_label, dataset_name, model_path, n_sentences=3, n_
     printAttentionedWordsAndSentences(review, all_sent_index, sent_index, sorted_wordlist, MAX_SENTENCE_NUM)
 
 
-def bertPredict(text, label):
+def bertPredict(dataset_name, n_classes, model_path, text, label):
 
     device = torch.device('cpu')
-
-    dataset_name = 'imdb_reviews'
-    n_classes = 2
 
     MAX_LEN = 128
     TEST_BATCH_SIZE = 8
@@ -152,16 +149,13 @@ def bertPredict(text, label):
     testing_loader = DataLoader(predict, **test_params)
 
     model = BertModel(n_classes=n_classes, dropout=0.3)
-    model.load_state_dict(torch.load('models/model_imdb_reviews_bert/20200604-141128', map_location=device))
+    model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
 
     for batch in testing_loader:
         ids = batch['ids']
         mask = batch['mask']
         token_type_ids = batch['token_type_ids']
-        print(ids)
-        print(mask)
-        print(token_type_ids)
 
         output = model(ids, mask, token_type_ids)
         output = torch.softmax(output, dim=1).detach().numpy()
@@ -169,17 +163,14 @@ def bertPredict(text, label):
         output = np.array(output)
 
         print(output)
-
+        print(text)
         print("True Label: {:}".format(label))
         print("Predicted Label: {:}".format(output.argmax(axis=1)))
 
 
-def bertEvaluate():
+def bertEvaluate(dataset_name, n_classes, model_path, isCheckpoint=False):
 
     device = 'cuda' if cuda.is_available() else 'cpu'
-
-    dataset_name = 'imdb_reviews'
-    n_classes = 2
 
     with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
         data_cleaned = pickle.load(f)
@@ -197,7 +188,10 @@ def bertEvaluate():
     testing_loader = DataLoader(test_set, **test_params)
 
     model = BertModel(n_classes=n_classes, dropout=0.3)
-    model.load_state_dict(torch.load('models/model_imdb_reviews_bert/20200604-141128'))
+    if isCheckpoint:
+        model.load_state_dict(torch.load(model_path)['model_state_dict'])
+    else:
+        model.load_state_dict(torch.load(model_path))
     model.to(device)
     model.eval()
     criterion = torch.nn.CrossEntropyLoss()
@@ -273,4 +267,18 @@ if __name__ == '__main__':
                MAX_WORD_NUM=MAX_WORD_NUM)
     '''
 
-    bertEvaluate()
+    bertEvaluate(dataset_name='IMDB', n_classes=10, model_path='models/model_IMDB_bert/ckp_1epochs_20200605-174455',
+                 isCheckpoint=True)
+
+    '''
+    
+    dataset_name = 'IMDB'
+    test_df = pd.read_csv('datasets/' + dataset_name + '/test.tsv', sep='\t')
+    test_df.columns = ['label', 'text']
+    test_df['label'] = test_df['label'].apply(lambda x: len(str(x)) - 1)
+    sample = test_df.sample(1)
+
+    bertPredict(text=sample.text.iloc[0], label=sample.label.iloc[0], dataset_name=dataset_name, n_classes=10,
+                model_path='models/model_IMDB_bert/20200605-184848')
+                
+    '''

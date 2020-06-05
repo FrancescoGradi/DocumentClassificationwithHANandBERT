@@ -244,12 +244,31 @@ if __name__ == '__main__':
 
     data_df = pd.DataFrame(data=reviews, columns=['text', 'label'])
 
-    '''
+    
     dataset_name = "imdb_complete"
     data_df = pd.read_json("datasets/" + dataset_name + ".json")
     data_df = data_df[["rating", "review"]]
     data_df.columns = ["label", "text"]
+    '''
 
+    MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
+    MAX_SENTENCE_NUM = 20  # maximum number of sentences in one document
+    MAX_WORD_NUM = 40  # maximum number of words in each sentence
+    EMBED_SIZE = 100  # vector size of word embedding
+    BATCH_SIZE = 64
+    NUM_EPOCHS = 60
 
-    #bertPreprocessing(dataset_name=dataset_name, data_df=data_df, save_all=True)
-    bertPreprocessingNew(dataset_name=dataset_name, data_df=data_df, save_all=True, MAX_LEN=128)
+    dataset_name = 'IMDB'
+    train_df = pd.read_csv('datasets/' + dataset_name + '/train.tsv', sep='\t')
+    train_df.columns = ['label', 'text']
+    test_df = pd.read_csv('datasets/' + dataset_name + '/test.tsv', sep='\t')
+    test_df.columns = ['label', 'text']
+    dev_df = pd.read_csv('datasets/' + dataset_name + '/dev.tsv', sep='\t')
+    dev_df.columns = ['label', 'text']
+    data_df = pd.concat([train_df, test_df, dev_df], ignore_index=True)
+    data_df['label'] = data_df['label'].apply(lambda x: len(str(x)) - 1)
+    print(data_df)
+
+    #bertPreprocessingNew(dataset_name=dataset_name, data_df=data_df, save_all=True, MAX_LEN=128)
+    preprocessing(dataset_name=dataset_name, data_df=data_df, save_all=True, MAX_SENTENCE_NUM=20, MAX_WORD_NUM=40,
+                  EMBED_SIZE=100)

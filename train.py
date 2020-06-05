@@ -31,11 +31,11 @@ from bertModel import BertModel
 from utils import wordAndSentenceCounter, format_time, loss_fn
 
 
-def bertTrainNew():
+def bertTrainNew(validation=True):
     device = 'cuda' if cuda.is_available() else 'cpu'
 
-    dataset_name = 'imdb_complete'
-    n_classes = 11
+    dataset_name = 'IMDB'
+    n_classes = 10
 
     with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
         data_cleaned = pickle.load(f)
@@ -45,8 +45,8 @@ def bertTrainNew():
     test_set = data_cleaned[2]
     MAX_LEN = data_cleaned[3]
 
-    TRAIN_BATCH_SIZE = 8
-    VALID_BATCH_SIZE = 4
+    TRAIN_BATCH_SIZE = 16
+    VALID_BATCH_SIZE = 8
     EPOCHS = 3
     LEARNING_RATE = 1e-05
 
@@ -112,48 +112,59 @@ def bertTrainNew():
 
         training_time = format_time(time.time() - t0)
         print("  Training epoch took: {:}".format(training_time))
+        print("  Saving checkpoint...")
+        os.makedirs(os.path.dirname('models/model_' + dataset_name + '_bert/ckp_' + str(epoch) + 'epochs_' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")), exist_ok=True)
+        torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                    'loss': loss},
+                    'models/model_' + dataset_name + '_bert/ckp_' + str(epoch) + 'epochs_' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
         print("")
-        print("Running Validation...")
 
-        t0 = time.time()
+        if validation == True:
+            print("Running Validation...")
 
-        model.eval()
+            t0 = time.time()
 
-        total_eval_accuracy = 0
-        total_eval_loss = 0
+            model.eval()
 
-        fin_targets = []
-        fin_outputs = []
-        with torch.no_grad():
-            for batch in validation_loader:
+            total_eval_accuracy = 0
+            total_eval_loss = 0
 
-                ids = batch['ids'].to(device, dtype=torch.long)
-                mask = batch['mask'].to(device, dtype=torch.long)
-                token_type_ids = batch['token_type_ids'].to(device, dtype=torch.long)
-                targets = batch['targets'].to(device, dtype=torch.long)
+            fin_targets = []
+            fin_outputs = []
+            with torch.no_grad():
+                for batch in validation_loader:
 
-                outputs = model(ids, mask, token_type_ids)
+                    ids = batch['ids'].to(device, dtype=torch.long)
+                    mask = batch['mask'].to(device, dtype=torch.long)
+                    token_type_ids = batch['token_type_ids'].to(device, dtype=torch.long)
+                    targets = batch['targets'].to(device, dtype=torch.long)
 
-                total_eval_loss += criterion(outputs, torch.max(targets, 1)[1])
+                    outputs = model(ids, mask, token_type_ids)
 
-                fin_targets.extend(targets.cpu().detach().numpy().tolist())
-                fin_outputs.extend(torch.softmax(outputs, dim=1).cpu().detach().numpy().tolist())
+                    total_eval_loss += criterion(outputs, torch.max(targets, 1)[1])
 
-        valid_loss = total_eval_loss / len(validation_loader)
+                    fin_targets.extend(targets.cpu().detach().numpy().tolist())
+                    fin_outputs.extend(torch.softmax(outputs, dim=1).cpu().detach().numpy().tolist())
 
-        fin_outputs = np.array(fin_outputs)
-        fin_targets =np.array(fin_targets)
+            valid_loss = total_eval_loss / len(validation_loader)
 
-        accuracy = accuracy_score(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1))
+            fin_outputs = np.array(fin_outputs)
+            fin_targets =np.array(fin_targets)
 
-        print("  Validation Accuracy: {0:.2f}".format(accuracy))
-        print("  Validation Loss: {0:.2f}".format(valid_loss))
-        writer.add_scalar('epoch_loss', valid_loss, epoch)
-        writer.add_scalar('epoch_accuracy', accuracy, epoch)
+            accuracy = accuracy_score(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1))
+
+            print("  Validation Accuracy: {0:.2f}".format(accuracy))
+            print("  Validation Loss: {0:.2f}".format(valid_loss))
+            writer.add_scalar('epoch_loss', valid_loss, epoch)
+            writer.add_scalar('epoch_accuracy', accuracy, epoch)
 
     print("")
     print("Training complete!")
     print("Saving model...")
+    os.makedirs(os.path.dirname('models/model_' + dataset_name + '_bert/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")), exist_ok=True)
     torch.save(model.state_dict(),
                'models/model_' + dataset_name + '_bert/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
     print("Total training took {:} (h:mm:ss)".format(format_time(time.time() - total_t0)))
@@ -218,9 +229,7 @@ def bertTrain():
                   epochs=NUM_EPOCHS,
                   callbacks=callbacks)
 
-    os.makedirs(
-        os.path.dirname('models/model_' + dataset_name + '_bert/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-                        + '.h5'), exist_ok=True)
+    os.makedirs(os.path.dirname('models/model_' + dataset_name + '_bert/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")), exist_ok=True)
     model.save('models/model_' + dataset_name + '_bert/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),
                save_format='tf')
 
@@ -263,10 +272,15 @@ def hanTrain():
 
     # Reading JSON dataset with Pandas
 
-    dataset_name = "imdb_complete"
-    data_df = pd.read_json("datasets/" + dataset_name + ".json")
-    data_df = data_df[["rating", "review"]]
-    data_df.columns = ["label", "text"]
+    dataset_name = 'IMDB'
+    train_df = pd.read_csv('datasets/' + dataset_name + '/train.tsv', sep='\t')
+    train_df.columns = ['label', 'text']
+    test_df = pd.read_csv('datasets/' + dataset_name + '/test.tsv', sep='\t')
+    test_df.columns = ['label', 'text']
+    dev_df = pd.read_csv('datasets/' + dataset_name + '/dev.tsv', sep='\t')
+    dev_df.columns = ['label', 'text']
+    data_df = pd.concat([train_df, test_df, dev_df], ignore_index=True)
+    data_df['label'] = data_df['label'].apply(lambda x: len(str(x)) - 1)
     
     cleaned = False
     '''
@@ -354,4 +368,4 @@ def hanTrain():
 
 
 if __name__ == '__main__':
-    bertTrainNew()
+    bertTrainNew(validation=False)
