@@ -31,11 +31,8 @@ from bertModel import BertModel
 from utils import wordAndSentenceCounter, format_time, loss_fn
 
 
-def bertTrainNew(validation=True):
+def bertTrain(dataset_name, n_classes, validation=True):
     device = 'cuda' if cuda.is_available() else 'cpu'
-
-    dataset_name = 'IMDB'
-    n_classes = 10
 
     with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
         data_cleaned = pickle.load(f)
@@ -99,11 +96,19 @@ def bertTrainNew(validation=True):
             if step % 200 == 0 and not step == 0:
                 # Calculate elapsed time in minutes.
                 elapsed = format_time(time.time() - t0)
+
+                fin_targets = targets.cpu().detach().numpy().tolist()
+                fin_outputs = torch.softmax(outputs, dim=1).cpu().detach().numpy().tolist()
+
+                fin_outputs = np.array(fin_outputs)
+                fin_targets = np.array(fin_targets)
+
+                accuracy = accuracy_score(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1))
                 # Report progress.
-                print('  Batch {:>5,}  of  {:>5,}.   Loss: {:>19,}   Elapsed: {:}.'.format(step, len(training_loader),
-                                                                                           loss, elapsed))
+                print('  Batch {:>5,}  of  {:>5,}.   Loss: {:>19,}   Accuracy: {:>5,}   Elapsed: {:}.'.format(step, len(training_loader), loss, accuracy, elapsed))
 
                 writer.add_scalar('batch_loss', loss, step + (epoch * len(training_loader)))
+                writer.add_scalar('batch_acc', accuracy, step + (epoch * len(training_loader)))
 
 
             optimizer.zero_grad()
@@ -168,79 +173,6 @@ def bertTrainNew(validation=True):
     torch.save(model.state_dict(),
                'models/model_' + dataset_name + '_bert/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
     print("Total training took {:} (h:mm:ss)".format(format_time(time.time() - total_t0)))
-
-
-def bertTrain():
-
-    dataset_name = 'imdb_reviews'
-    n_classes = 2
-
-    with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
-        data_cleaned = pickle.load(f)
-
-    train_inputs = data_cleaned[0]
-    train_mask = data_cleaned[1]
-    train_labels = data_cleaned[2]
-    validation_inputs = data_cleaned[3]
-    validation_mask = data_cleaned[4]
-    validation_labels = data_cleaned[5]
-    test_inputs = data_cleaned[6]
-    test_mask = data_cleaned[7]
-    test_labels = data_cleaned[8]
-
-    NUM_EPOCHS = 1
-    BATCH_SIZE = 16
-    MAX_LEN = 128
-
-    print(train_labels)
-
-
-    config = BertConfig.from_pretrained('bert-base-uncased', num_labels=n_classes)
-    model = TFBertForSequenceClassification.from_pretrained('bert-base-uncased', config=config)
-
-    '''
-    
-    token_inputs = Input((MAX_LEN), dtype=tf.int32, name='input_word_ids')
-    bert_layers = TFBertModel.from_pretrained("bert-base-uncased")
-    bert_output, _ = bert_layers(token_inputs)
-    dense = Dense(128, activation='relu')(bert_output)
-    dense_drop = Dropout(rate=0.2, name='dropout')(dense)
-    cls_output = Dense(n_classes, activation='softmax', name='cls_output')(dense_drop)
-
-    model = Model(token_inputs, cls_output)
-    '''
-
-    optimizer = Adam()
-    loss = tf.keras.losses.CategoricalCrossentropy()
-    metric = tf.keras.metrics.BinaryAccuracy(name='accuracy')
-    model.compile(loss=loss, optimizer=optimizer, metrics=['acc'])
-    print(model.summary())
-
-    log_dir = "logs/" + dataset_name + "_bert/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    shutil.rmtree(log_dir, ignore_errors=True)
-
-    callbacks = [
-        EarlyStopping(monitor='val_accuracy', patience=4, restore_best_weights=True),
-        TensorBoard(log_dir=log_dir, histogram_freq=1, profile_batch=0, update_freq=50),
-    ]
-
-    h = model.fit(train_inputs, train_labels,
-                  validation_data=(validation_inputs, validation_labels),
-                  epochs=NUM_EPOCHS,
-                  callbacks=callbacks)
-
-    os.makedirs(os.path.dirname('models/model_' + dataset_name + '_bert/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")), exist_ok=True)
-    model.save('models/model_' + dataset_name + '_bert/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"),
-               save_format='tf')
-
-    # evaluate the network
-    print("Evaluating network...")
-    predictions = model.predict(test_inputs, batch_size=BATCH_SIZE)
-    model.evaluate(test_inputs, test_labels, batch_size=BATCH_SIZE, use_multiprocessing=True)
-    print(predictions)
-    print(test_labels)
-    print(classification_report(test_labels.argmax(axis=1), predictions.argmax(axis=1)))
-    
 
 
 def hanTrain():
@@ -368,4 +300,6 @@ def hanTrain():
 
 
 if __name__ == '__main__':
-    bertTrainNew(validation=False)
+    dataset_name = 'yelp_2014'
+    n_classes = 5
+    bertTrain(dataset_name=dataset_name, n_classes=n_classes, validation=False)

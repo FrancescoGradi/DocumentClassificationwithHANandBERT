@@ -132,83 +132,16 @@ def preprocessing(dataset_name, data_df, save_all=False, cleaned=False, MAX_FEAT
     return x_train, y_train, x_val, y_val, x_test, y_test, embedding_matrix, word_index, n_classes
 
 
-def bertPreprocessing(dataset_name, data_df, save_all=False, MAX_LEN=128):
-    '''
-    Old
-
-    '''
-
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    stop_words = set(stopwords.words('english'))
-
-    sentences = data_df.text.values
-    labels = to_categorical(data_df.label.values)
-
-    # Using Bert tokenizer and encoder
-
-    input_ids = []
-    for sent in sentences:
-        cleaned_sent = cleanString(sent, stop_words)
-        input_ids.append(tokenizer.encode(sent, add_special_tokens=True))
-
-    print(sentences[0])
-    print(input_ids[0])
-
-    # Padding
-    input_ids = pad_sequences(input_ids, maxlen=MAX_LEN, dtype='long', value=0, truncating='post', padding='post')
-    print(input_ids[0])
-
-    # Attention Mask
-    attention_masks = []
-    for sent in input_ids:
-        mask = [int(token_id > 0) for token_id in sent]
-        attention_masks.append(mask)
-    print(attention_masks[0])
-
-    # Train/Validation/Test splitting
-    train_inputs, validation_inputs, train_labels, validation_labels = train_test_split(input_ids, labels,
-                                                                                        random_state=1444,
-                                                                                        test_size=0.2)
-    validation_inputs, test_inputs, validation_labels, test_labels = train_test_split(validation_inputs,
-                                                                                      validation_labels,
-                                                                                      random_state=1444,
-                                                                                      test_size=0.5)
-
-    train_mask, validation_mask, _, _ = train_test_split(attention_masks, labels, random_state=1444, test_size=0.2)
-    validation_mask, test_mask, _, _ = train_test_split(validation_mask, _, random_state=1444, test_size=0.5)
-
-    train_inputs = tf.cast(train_inputs, tf.int32)
-    validation_inputs = tf.cast(validation_inputs, tf.int32)
-    test_inputs = tf.cast(test_inputs, tf.int32)
-
-    train_labels = np.array(train_labels)
-    validation_labels = np.array(validation_labels)
-    test_labels = np.array(test_labels)
-
-    train_mask = tf.cast(train_mask, tf.int32)
-    validation_mask = tf.cast(validation_mask, tf.int32)
-    test_mask = tf.cast(test_mask, tf.int32)
-
-    print(len(train_inputs))
-    print(len(validation_inputs))
-    print(len(test_inputs))
-
-    print(len(train_labels))
-    print(len(validation_labels))
-    print(len(test_labels))
-
-    print(len(train_mask))
-    print(len(validation_mask))
-    print(len(test_mask))
-
-    if save_all is True:
-        os.makedirs(os.path.dirname('datasets/' + dataset_name + '_bert_cleaned.txt'), exist_ok=True)
-        with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'wb') as f:
-            pickle.dump([train_inputs, train_mask, train_labels, validation_inputs, validation_mask, validation_labels,
-                         test_inputs, test_mask, test_labels], f)
-
-
-def bertPreprocessingNew(dataset_name, data_df, MAX_LEN=128, save_all=True):
+def bertPreprocessing(dataset_name, data_df, MAX_LEN=128, save_all=True):
+    """
+    Dataset preparation for Bert Model. It is splitted (0.8 train, 0.1 valid and 0.1 test) and sets are returned. Every
+    set is a CustomDataset class (see utils.py) that return data in Bert format.
+    :param dataset_name: string of dataset name.
+    :param data_df: dataset in dataframe pandas format.
+    :param MAX_LEN: it represents total words represented in bert encoding (other words will be ignored).
+    :param save_all: boolean that specifies if save all data for time saving before training or network evaluating.
+    :return: training_set, validation_set, test_set in CustomDataset format.
+    """
 
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
@@ -232,6 +165,8 @@ def bertPreprocessingNew(dataset_name, data_df, MAX_LEN=128, save_all=True):
         with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'wb') as f:
             pickle.dump([training_set, validation_set, test_set, MAX_LEN], f)
 
+    return training_set, validation_set, test_set
+
 
 if __name__ == '__main__':
 
@@ -249,7 +184,7 @@ if __name__ == '__main__':
     data_df = pd.read_json("datasets/" + dataset_name + ".json")
     data_df = data_df[["rating", "review"]]
     data_df.columns = ["label", "text"]
-    '''
+    
 
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 20  # maximum number of sentences in one document
@@ -268,7 +203,16 @@ if __name__ == '__main__':
     data_df = pd.concat([train_df, test_df, dev_df], ignore_index=True)
     data_df['label'] = data_df['label'].apply(lambda x: len(str(x)) - 1)
     print(data_df)
+    '''
 
-    #bertPreprocessingNew(dataset_name=dataset_name, data_df=data_df, save_all=True, MAX_LEN=128)
-    preprocessing(dataset_name=dataset_name, data_df=data_df, save_all=True, MAX_SENTENCE_NUM=20, MAX_WORD_NUM=40,
-                  EMBED_SIZE=100)
+    dataset_name = "yelp_2014"
+    data_df = pd.read_csv("datasets/" + dataset_name + ".csv")
+    data_df = data_df[['label', 'text']]
+    for index, row in data_df.iterrows():
+        try:
+            row['label'] = int(float(row['label'])) - 1
+        except:
+            row['label'] = 0
+
+    bertPreprocessing(dataset_name=dataset_name, data_df=data_df, save_all=True, MAX_LEN=128)
+    #preprocessing(dataset_name=dataset_name, data_df=data_df, save_all=True, MAX_SENTENCE_NUM=20, MAX_WORD_NUM=40, EMBED_SIZE=100)

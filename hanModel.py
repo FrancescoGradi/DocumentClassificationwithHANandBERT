@@ -13,9 +13,7 @@ class AttentionLayer(layers.Layer):
     - Yang et. al.
     Source: https://www.cs.cmu.edu/~hovy/papers/16HLT-hierarchical-attention-networks.pdf
     """
-
     def __init__(self, attention_dim=100, return_coefficients=True, **kwargs):
-        # Initializer
         self.supports_masking = True
         self.return_coefficients = return_coefficients
         self.init = initializers.get('glorot_uniform')
@@ -23,7 +21,7 @@ class AttentionLayer(layers.Layer):
         super(AttentionLayer, self).__init__(**kwargs)
 
     def build(self, input_shape):
-        # W = Weight matrix, b = bias vector, u = context vector
+
         assert len(input_shape) == 3
 
         self.W = self.add_weight(shape=(input_shape[-1], self.attention_dim),
@@ -78,60 +76,7 @@ class AttentionLayer(layers.Layer):
             return input_shape[0], input_shape[-1]
 
 
-
-'''
-
-# Network with subclassing style doesnt work
-
-class WordEncoder(Model):
-
-    def __init__(self, len_word_index, embedding_matrix, MAX_WORD_NUM, EMBED_SIZE):
-        super(WordEncoder, self).__init__()
-
-        self.word_input = Input(shape=(MAX_WORD_NUM,), dtype='int32', name='word_input')
-        self.word_sequences = Embedding(len_word_index + 1, EMBED_SIZE, weights=[embedding_matrix],
-                                         input_length=MAX_WORD_NUM, trainable=False, name='word_embedding')
-        self.word_gru = Bidirectional(GRU(EMBED_SIZE/2, return_sequences=True), name='word_gru')
-        self.word_dense = Dense(EMBED_SIZE, activation='relu', name='word_dense')
-        self.word_att = AttentionLayer(EMBED_SIZE, return_coefficients=False, name='word_attention')
-
-    def call(self, inputs):
-        x = self.word_input(inputs)
-        x = self.word_sequences(x)
-        x = self.word_gru(x)
-        x = self.word_dense(x)
-        x = self.word_att(x)
-
-        return x
-
-
-class HanModel(Model):
-
-    def __init__(self, word_encoder, n_classes, len_word_index, embedding_matrix, MAX_SENTENCE_NUM=40, MAX_WORD_NUM=50, EMBED_SIZE=100):
-        super(HanModel, self).__init__()
-
-        self.sent_input = Input(shape=(MAX_SENTENCE_NUM, MAX_WORD_NUM), dtype='int32', name='sent_input')
-        self.sent_encoder = TimeDistributed(word_encoder, name='sent_linking')
-        self.sent_gru = Bidirectional(GRU(EMBED_SIZE/2, return_sequences=True), name='sent_gru')
-        self.sent_dense = Dense(EMBED_SIZE, activation='relu', name='sent_dense')
-        self.sent_att = AttentionLayer(EMBED_SIZE, return_coefficients=False, name='sent_attention')
-        self.sent_drop = Dropout(0.5, name='sent_dropout')
-        self.preds = Dense(n_classes, activation='softmax', name='output')
-
-    def call(self, inputs):
-        x = self.sent_input(inputs)
-        x = self.sent_encoder(x)
-        x = self.sent_gru(x)
-        x = self.sent_dense(x)
-        x = self.sent_att(x)
-        x = self.sent_drop(x)
-
-        return self.preds(x)
-
-'''
-
 def HanModel(n_classes, len_word_index, embedding_matrix, MAX_SENTENCE_NUM=40, MAX_WORD_NUM=50, EMBED_SIZE=100):
-
     # Word Encoder
     word_input = Input(shape=(MAX_WORD_NUM,), dtype='int32', name='word_input')
     word_sequences = Embedding(len_word_index + 1, EMBED_SIZE, weights=[embedding_matrix], input_length=MAX_WORD_NUM,

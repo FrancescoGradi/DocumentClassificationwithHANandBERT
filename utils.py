@@ -261,22 +261,22 @@ def printAttentionedWordsAndSentences(review, all_sent_index, sent_index, sorted
 
 
 def format_time(elapsed):
-    '''
+    """
     Takes a time in seconds and returns a string hh:mm:ss
-    '''
-    # Round to the nearest second.
+    :param elapsed: time in seconds.
+    :return: time in hh:mm::ss format.
+    """
     elapsed_rounded = int(round((elapsed)))
-
-    # Format as hh:mm:ss
     return str(datetime.timedelta(seconds=elapsed_rounded))
 
 
-def loss_fn(outputs, targets):
-    return torch.nn.BCEWithLogitsLoss()(outputs, targets)
-
-
 class CustomDataset(Dataset):
-
+    """
+    Custum class that provides tokenization (with appropriatly Bert tokenized in input) of every text of a pandas
+    dataframe in input. Also it convertes a int label (target value for the network) in one hot encoding format.
+    __getitem__ returns ids (bert encoding of max_len), the relative mask and token_type_ids. Also the processed label
+    for the network, renamed 'target'.
+    """
     def __init__(self, dataframe, tokenizer, max_len):
         self.tokenizer = tokenizer
         self.data = dataframe

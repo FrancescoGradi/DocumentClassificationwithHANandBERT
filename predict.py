@@ -132,7 +132,15 @@ def hanPredict(review, review_label, dataset_name, model_path, n_sentences=3, n_
 
 
 def bertPredict(dataset_name, n_classes, model_path, text, label):
-
+    """
+    This function predicts label of instance of a bert pretrained dataset, using cpu, printing results.
+    :param dataset_name: string of dataset name.
+    :param n_classes: int of number of dataset classes.
+    :param model_path: path of saved pytorch model fine tuned bert network.
+    :param text: string to classify.
+    :param label: true label (int) associated to the text in input.
+    :return: None
+    """
     device = torch.device('cpu')
 
     MAX_LEN = 128
@@ -169,7 +177,15 @@ def bertPredict(dataset_name, n_classes, model_path, text, label):
 
 
 def bertEvaluate(dataset_name, n_classes, model_path, isCheckpoint=False):
-
+    """
+    Test set evaluating for a fine tuned Bert model. This function print accuracy and a scikit learn classification
+    report with f1-score. It uses gpu.
+    :param dataset_name: string of dataset name.
+    :param n_classes: int of number of dataset classes.
+    :param model_path: path of saved pytorch model fine tuned bert network (or checkpoint with isCheckpoint as True).
+    :param isCheckpoint: boolean that specifies neither model_path is a model checkpoint.
+    :return: None
+    """
     device = 'cuda' if cuda.is_available() else 'cpu'
 
     with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
