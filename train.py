@@ -28,7 +28,7 @@ from torch.utils.tensorboard import SummaryWriter
 from preprocessing import preprocessing
 from hanModel import HanModel
 from bertModel import BertModel
-from utils import wordAndSentenceCounter, format_time, loss_fn
+from utils import wordAndSentenceCounter, format_time
 
 
 def bertTrain(dataset_name, n_classes, validation=True):
@@ -97,18 +97,10 @@ def bertTrain(dataset_name, n_classes, validation=True):
                 # Calculate elapsed time in minutes.
                 elapsed = format_time(time.time() - t0)
 
-                fin_targets = targets.cpu().detach().numpy().tolist()
-                fin_outputs = torch.softmax(outputs, dim=1).cpu().detach().numpy().tolist()
-
-                fin_outputs = np.array(fin_outputs)
-                fin_targets = np.array(fin_targets)
-
-                accuracy = accuracy_score(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1))
                 # Report progress.
-                print('  Batch {:>5,}  of  {:>5,}.   Loss: {:>19,}   Accuracy: {:>5,}   Elapsed: {:}.'.format(step, len(training_loader), loss, accuracy, elapsed))
+                print('  Batch {:>5,}  of  {:>5,}.   Loss: {:>19,}   Elapsed: {:}.'.format(step, len(training_loader), loss, elapsed))
 
                 writer.add_scalar('batch_loss', loss, step + (epoch * len(training_loader)))
-                writer.add_scalar('batch_acc', accuracy, step + (epoch * len(training_loader)))
 
 
             optimizer.zero_grad()
