@@ -178,7 +178,7 @@ def bertTrain(dataset_name, n_classes, validation=True, from_checkpoint=False, m
     os.makedirs(os.path.dirname('models/model_' + dataset_name + '_bert/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")), exist_ok=True)
     torch.save(model.state_dict(),
                'models/model_' + dataset_name + '_bert/' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
-    print("Total training took {:} (h:mm:ss)".format(format_time(time.time() - total_t0)))
+    print("Total training took {:} (h:mm:ss)".format(formatTime(time.time() - total_t0)))
 
 
 def hanTrain():
