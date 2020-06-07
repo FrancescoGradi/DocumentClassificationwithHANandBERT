@@ -28,10 +28,10 @@ from torch.utils.tensorboard import SummaryWriter
 from preprocessing import preprocessing
 from hanModel import HanModel
 from bertModel import BertModel
-from utils import wordAndSentenceCounter, format_time
+from utils import wordAndSentenceCounter, formatTime
 
 
-def bertTrain(dataset_name, n_classes, validation=True):
+def bertTrain(dataset_name, n_classes, validation=True, from_checkpoint=False, model_path=None):
     device = 'cuda' if cuda.is_available() else 'cpu'
 
     with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
@@ -46,6 +46,7 @@ def bertTrain(dataset_name, n_classes, validation=True):
     VALID_BATCH_SIZE = 8
     EPOCHS = 3
     LEARNING_RATE = 1e-05
+    start_epoch = 0
 
     train_params = {'batch_size': TRAIN_BATCH_SIZE,
                     'shuffle': True,
@@ -62,10 +63,25 @@ def bertTrain(dataset_name, n_classes, validation=True):
     testing_loader = DataLoader(test_set, **test_params)
 
     model = BertModel(n_classes=n_classes, dropout=0.3)
-    model.to(device)
 
     optimizer = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
     criterion = torch.nn.CrossEntropyLoss()
+
+    if from_checkpoint == True:
+        print('Restoring model from checkpoint...')
+        torch.cuda.empty_cache()
+        checkpoint = torch.load(model_path, map_location=device)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        for state in optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.cuda()
+        start_epoch = checkpoint['epoch'] + 1
+        del checkpoint
+        print('Start epoch: {:}'.format(start_epoch + 1))
+
+    model.to(device)
 
     # Stats with Tensorboard
     log_dir = "logs/" + dataset_name + "_bert/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -74,7 +90,7 @@ def bertTrain(dataset_name, n_classes, validation=True):
 
     total_t0 = time.time()
 
-    for epoch in range(EPOCHS):
+    for epoch in range(start_epoch, EPOCHS):
         print("")
         print('============================== Epoch {:} / {:} =============================='.format(epoch + 1, EPOCHS))
         print('Training...')
@@ -93,9 +109,9 @@ def bertTrain(dataset_name, n_classes, validation=True):
             outputs = model(ids, mask, token_type_ids)
             loss = criterion(outputs, torch.max(targets, 1)[1])
 
-            if step % 200 == 0 and not step == 0:
+            if step % 100 == 0 and not step == 0:
                 # Calculate elapsed time in minutes.
-                elapsed = format_time(time.time() - t0)
+                elapsed = formatTime(time.time() - t0)
 
                 # Report progress.
                 print('  Batch {:>5,}  of  {:>5,}.   Loss: {:>19,}   Elapsed: {:}.'.format(step, len(training_loader), loss, elapsed))
@@ -107,7 +123,7 @@ def bertTrain(dataset_name, n_classes, validation=True):
             loss.backward()
             optimizer.step()
 
-        training_time = format_time(time.time() - t0)
+        training_time = formatTime(time.time() - t0)
         print("  Training epoch took: {:}".format(training_time))
         print("  Saving checkpoint...")
         os.makedirs(os.path.dirname('models/model_' + dataset_name + '_bert/ckp_' + str(epoch) + 'epochs_' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")), exist_ok=True)
@@ -121,8 +137,6 @@ def bertTrain(dataset_name, n_classes, validation=True):
 
         if validation == True:
             print("Running Validation...")
-
-            t0 = time.time()
 
             model.eval()
 
@@ -294,4 +308,5 @@ def hanTrain():
 if __name__ == '__main__':
     dataset_name = 'yelp_2014'
     n_classes = 5
-    bertTrain(dataset_name=dataset_name, n_classes=n_classes, validation=False)
+    bertTrain(dataset_name=dataset_name, n_classes=n_classes, validation=False, from_checkpoint=True,
+              model_path='models/model_yelp_2014_bert/ckp_1epochs_20200607-000843')

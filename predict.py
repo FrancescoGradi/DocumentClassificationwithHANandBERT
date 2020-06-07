@@ -1,5 +1,6 @@
 import pickle
 import torch
+import time
 import numpy as np
 import pandas as pd
 
@@ -13,7 +14,8 @@ from transformers import BertTokenizer
 
 from hanModel import AttentionLayer, HanModel
 from bertModel import BertModel
-from utils import cleanString, wordToSeq, wordAttentionWeights, printAttentionedWordsAndSentences, CustomDataset
+from utils import cleanString, wordToSeq, wordAttentionWeights, printAttentionedWordsAndSentences, CustomDataset, \
+    formatTime
 
 import tensorflow as tf
 
@@ -194,7 +196,7 @@ def bertEvaluate(dataset_name, n_classes, model_path, isCheckpoint=False):
     test_set = data_cleaned[2]
     MAX_LEN = data_cleaned[3]
 
-    TEST_BATCH_SIZE = 8
+    TEST_BATCH_SIZE = 16
 
     test_params = {'batch_size': TEST_BATCH_SIZE,
                    'shuffle': True,
@@ -214,11 +216,12 @@ def bertEvaluate(dataset_name, n_classes, model_path, isCheckpoint=False):
 
     # evaluate the network
     print("Evaluating network on Test Set")
+    t0 = time.time()
     total_eval_loss = 0
     fin_targets = []
     fin_outputs = []
     with torch.no_grad():
-        for batch in testing_loader:
+        for step, batch in enumerate(testing_loader):
             ids = batch['ids'].to(device, dtype=torch.long)
             mask = batch['mask'].to(device, dtype=torch.long)
             token_type_ids = batch['token_type_ids'].to(device, dtype=torch.long)
@@ -227,6 +230,10 @@ def bertEvaluate(dataset_name, n_classes, model_path, isCheckpoint=False):
             outputs = model(ids, mask, token_type_ids)
 
             total_eval_loss += criterion(outputs, torch.max(targets, 1)[1])
+
+            if step % 100 == 0 and not step == 0:
+                elapsed = formatTime(time.time() - t0)
+                print('  Batch {:>5,}  of  {:>5,}.   Elapsed: {:}.'.format(step, len(testing_loader), elapsed))
 
             fin_targets.extend(targets.cpu().detach().numpy().tolist())
             fin_outputs.extend(torch.softmax(outputs, dim=1).cpu().detach().numpy().tolist())
@@ -283,7 +290,7 @@ if __name__ == '__main__':
                MAX_WORD_NUM=MAX_WORD_NUM)
     '''
 
-    bertEvaluate(dataset_name='IMDB', n_classes=10, model_path='models/model_IMDB_bert/ckp_1epochs_20200605-174455',
+    bertEvaluate(dataset_name='yelp_2014', n_classes=5, model_path='models/model_yelp_2014_bert/ckp_0epochs_20200606-193017',
                  isCheckpoint=True)
 
     '''

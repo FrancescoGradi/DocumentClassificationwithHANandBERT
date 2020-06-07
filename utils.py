@@ -260,7 +260,7 @@ def printAttentionedWordsAndSentences(review, all_sent_index, sent_index, sorted
         print(sent_color, idx, sent_to_print)
 
 
-def format_time(elapsed):
+def formatTime(elapsed):
     """
     Takes a time in seconds and returns a string hh:mm:ss
     :param elapsed: time in seconds.
