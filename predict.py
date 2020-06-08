@@ -14,6 +14,7 @@ from transformers import BertTokenizer
 
 from hanModel import AttentionLayer, HanModel
 from bertModel import BertModel
+from lstmModel import LSTMBase
 from utils import cleanString, wordToSeq, wordAttentionWeights, printAttentionedWordsAndSentences, CustomDataset, \
     formatTime
 
@@ -175,7 +176,7 @@ def bertPredict(dataset_name, n_classes, model_path, text, label):
         print(output)
         print(text)
         print("True Label: {:}".format(label))
-        print("Predicted Label: {:}".format(output.argmax(axis=1)))
+        print("Predicted Label: {:}".format(output.argmax(axis=1) + 1))
 
 
 def bertEvaluate(dataset_name, n_classes, model_path, isCheckpoint=False):
@@ -264,6 +265,81 @@ def getRandomReview(container_path):
     return sample.text.iloc[0], sample.label.iloc[0]
 
 
+def lstmEvaluate(dataset_name, n_classes, model_path, isCheckpoint=False):
+    device = 'cuda' if cuda.is_available() else 'cpu'
+
+    with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
+        data_cleaned = pickle.load(f)
+
+
+    test_set = data_cleaned[0]
+    MAX_LEN = data_cleaned[3]
+
+    TEST_BATCH_SIZE = 64
+    EMBEDDING_DIM = 100
+    HIDDEN_DIM = 512
+
+    test_params = {'batch_size': TEST_BATCH_SIZE,
+                   'shuffle': True,
+                   'num_workers': 0
+                   }
+
+    testing_loader = DataLoader(test_set, **test_params)
+
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
+    model = LSTMBase(embedding_dim=EMBEDDING_DIM, hidden_dim=HIDDEN_DIM, vocab_size=tokenizer.vocab_size,
+                     n_classes=n_classes)
+    print(model)
+    total_params = sum(p.numel() for p in model.parameters())
+    total_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print('Total parameters: {:}'.format(total_params))
+    print('Total trainable parameters: {:}'.format(total_trainable_params))
+
+    if isCheckpoint:
+        model.load_state_dict(torch.load(model_path)['model_state_dict'])
+    else:
+        model.load_state_dict(torch.load(model_path))
+    model.to(device)
+    model.eval()
+    criterion = torch.nn.CrossEntropyLoss()
+
+    # evaluate the network
+    print("Evaluating network on Test Set")
+    t0 = time.time()
+    total_eval_loss = 0
+    fin_targets = []
+    fin_outputs = []
+    with torch.no_grad():
+        for step, batch in enumerate(testing_loader):
+            ids = batch['ids'].to(device, dtype=torch.long)
+            targets = batch['targets'].to(device, dtype=torch.long)
+
+            outputs = model(ids)
+
+            total_eval_loss += criterion(outputs, torch.max(targets, 1)[1])
+
+            if step % 100 == 0 and not step == 0:
+                elapsed = formatTime(time.time() - t0)
+                print('  Batch {:>5,}  of  {:>5,}.   Elapsed: {:}.'.format(step, len(testing_loader), elapsed))
+
+            fin_targets.extend(targets.cpu().detach().numpy().tolist())
+            fin_outputs.extend(torch.softmax(outputs, dim=1).cpu().detach().numpy().tolist())
+
+    valid_loss = total_eval_loss / len(testing_loader)
+
+    fin_outputs = np.array(fin_outputs)
+    fin_targets = np.array(fin_targets)
+
+    accuracy = accuracy_score(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1))
+
+    print("")
+    print("  Test Accuracy: {0:.2f}".format(accuracy))
+    print("  Test Loss: {0:.2f}".format(valid_loss))
+    print("")
+
+    print(classification_report(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1)))
+
 if __name__ == '__main__':
 
     '''
@@ -290,8 +366,12 @@ if __name__ == '__main__':
                MAX_WORD_NUM=MAX_WORD_NUM)
     '''
 
-    bertEvaluate(dataset_name='yelp_2014', n_classes=5, model_path='models/model_yelp_2014_bert/ckp_0epochs_20200606-193017',
-                 isCheckpoint=True)
+    bertEvaluate(dataset_name='imdb_reviews', n_classes=2, model_path='models/model_imdb_reviews_bert/20200604-141128', isCheckpoint=False)
+
+    review, review_label = getRandomReview('datasets/yelp_reviews_container.csv')
+    #bertPredict(text=review, label=review_label, dataset_name='yelp_2014', n_classes=5, model_path='models/model_yelp_2014_bert/20200607-201214')
+
+    #lstmEvaluate(dataset_name='imdb_reviews', n_classes=2, model_path='models/model_imdb_reviews_lstm/20200608-154228')
 
     '''
     
