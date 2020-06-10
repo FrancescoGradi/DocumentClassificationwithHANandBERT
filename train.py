@@ -47,9 +47,9 @@ def kdLstmTrain(dataset_name, n_classes, teacher_path, validation=True, from_che
     TRAIN_BATCH_SIZE = 16
     VALID_BATCH_SIZE = 8
     EPOCHS = 30
-    LEARNING_RATE = 1e-05
-    EMBEDDING_DIM = 100
-    HIDDEN_DIM = 512
+    LEARNING_RATE = 1e-03
+    EMBEDDING_DIM = 50
+    HIDDEN_DIM = 256
     LAMBDA = 1
     start_epoch = 0
 
@@ -130,9 +130,9 @@ def kdLstmTrain(dataset_name, n_classes, teacher_path, validation=True, from_che
             student_model.zero_grad()
 
             outputs = student_model(ids)
+            outputs = torch.softmax(outputs, dim=1)
 
-            distillation = LAMBDA * F.kl_div(torch.softmax(outputs, dim=1),
-                                             torch.softmax(teacher_model(ids, mask, token_type_ids), dim=1), 'batchmean')
+            distillation = LAMBDA * F.kl_div(outputs, torch.softmax(teacher_model(ids, mask, token_type_ids), dim=1), 'batchmean')
 
             # Loss = classification + lambda * distillation
             loss = classification_criterion(outputs, torch.max(targets, 1)[1]) + distillation
@@ -184,6 +184,7 @@ def kdLstmTrain(dataset_name, n_classes, teacher_path, validation=True, from_che
                     targets = batch['targets'].to(device, dtype=torch.long)
 
                     outputs = student_model(ids)
+                    outputs = torch.softmax(outputs, dim=1)
 
                     total_eval_loss += classification_criterion(outputs, torch.max(targets, 1)[1]) + \
                                        (LAMBDA * distillation_criterion(outputs, teacher_model(ids, mask, token_type_ids)))
@@ -228,9 +229,9 @@ def lstmTrain(dataset_name, n_classes, validation=True, from_checkpoint=False, m
     TRAIN_BATCH_SIZE = 64
     VALID_BATCH_SIZE = 8
     EPOCHS = 40
-    LEARNING_RATE = 1e-05
-    EMBEDDING_DIM = 100
-    HIDDEN_DIM = 512
+    LEARNING_RATE = 1e-03
+    EMBEDDING_DIM = 50
+    HIDDEN_DIM = 256
     start_epoch = 0
 
     train_params = {'batch_size': TRAIN_BATCH_SIZE,
@@ -299,7 +300,7 @@ def lstmTrain(dataset_name, n_classes, validation=True, from_checkpoint=False, m
 
             outputs = model(ids)
 
-            loss = criterion(outputs, torch.max(targets, 1)[1])
+            loss = criterion(torch.softmax(outputs, dim=1), torch.max(targets, 1)[1])
 
             if step % 100 == 0 and not step == 0:
                 # Calculate elapsed time in minutes.
@@ -345,7 +346,7 @@ def lstmTrain(dataset_name, n_classes, validation=True, from_checkpoint=False, m
 
                     outputs = model(ids)
 
-                    total_eval_loss += criterion(outputs, torch.max(targets, 1)[1])
+                    total_eval_loss += criterion(torch.softmax(outputs, dim=1), torch.max(targets, 1)[1])
 
                     fin_targets.extend(targets.cpu().detach().numpy().tolist())
                     fin_outputs.extend(torch.softmax(outputs, dim=1).cpu().detach().numpy().tolist())
@@ -447,6 +448,7 @@ def bertTrain(dataset_name, n_classes, validation=True, from_checkpoint=False, m
             model.zero_grad()
 
             outputs = model(ids, mask, token_type_ids)
+            outputs = torch.softmax(outputs, dim=1)
 
             loss = criterion(outputs, torch.max(targets, 1)[1])
 
@@ -496,7 +498,7 @@ def bertTrain(dataset_name, n_classes, validation=True, from_checkpoint=False, m
 
                     outputs = model(ids, mask, token_type_ids)
 
-                    total_eval_loss += criterion(outputs, torch.max(targets, 1)[1])
+                    total_eval_loss += criterion(torch.softmax(outputs, dim=1), torch.max(targets, 1)[1])
 
                     fin_targets.extend(targets.cpu().detach().numpy().tolist())
                     fin_outputs.extend(torch.softmax(outputs, dim=1).cpu().detach().numpy().tolist())
@@ -647,8 +649,8 @@ def hanTrain():
 
 
 if __name__ == '__main__':
-    dataset_name = 'imdb_reviews'
-    n_classes = 2
-    #lstmTrain(dataset_name=dataset_name, n_classes=n_classes, from_checkpoint=True, model_path='models/model_imdb_reviews_lstm/ckp_29epochs_20200608-150739')
-    kdLstmTrain(dataset_name, n_classes, teacher_path='models/model_imdb_reviews_bert/20200604-141128')
+    dataset_name = 'yelp_2014'
+    n_classes = 5
+    #lstmTrain(dataset_name=dataset_name, n_classes=n_classes)
+    kdLstmTrain(dataset_name, n_classes, teacher_path='models/model_yelp_2014_bert/20200607-201214')
     #bertTrain(dataset_name, n_classes)

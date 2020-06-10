@@ -276,8 +276,8 @@ def lstmEvaluate(dataset_name, n_classes, model_path, isCheckpoint=False):
     MAX_LEN = data_cleaned[3]
 
     TEST_BATCH_SIZE = 64
-    EMBEDDING_DIM = 100
-    HIDDEN_DIM = 512
+    EMBEDDING_DIM = 50
+    HIDDEN_DIM = 256
 
     test_params = {'batch_size': TEST_BATCH_SIZE,
                    'shuffle': True,
@@ -317,7 +317,7 @@ def lstmEvaluate(dataset_name, n_classes, model_path, isCheckpoint=False):
 
             outputs = model(ids)
 
-            total_eval_loss += criterion(outputs, torch.max(targets, 1)[1])
+            total_eval_loss += criterion(torch.softmax(outputs, dim=1), torch.max(targets, 1)[1])
 
             if step % 100 == 0 and not step == 0:
                 elapsed = formatTime(time.time() - t0)
@@ -366,12 +366,12 @@ if __name__ == '__main__':
                MAX_WORD_NUM=MAX_WORD_NUM)
     '''
 
-    bertEvaluate(dataset_name='imdb_reviews', n_classes=2, model_path='models/model_imdb_reviews_bert/20200604-141128', isCheckpoint=False)
+    #bertEvaluate(dataset_name='imdb_reviews', n_classes=2, model_path='models/model_imdb_reviews_bert/20200604-141128', isCheckpoint=False)
 
     review, review_label = getRandomReview('datasets/yelp_reviews_container.csv')
     #bertPredict(text=review, label=review_label, dataset_name='yelp_2014', n_classes=5, model_path='models/model_yelp_2014_bert/20200607-201214')
 
-    #lstmEvaluate(dataset_name='imdb_reviews', n_classes=2, model_path='models/model_imdb_reviews_lstm/20200608-154228')
+    lstmEvaluate(dataset_name='yelp_2014', n_classes=5, isCheckpoint=True, model_path='models/model_yelp_2014_lstm/ckp_7epochs_20200610-152253')
 
     '''
     

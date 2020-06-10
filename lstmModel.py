@@ -9,7 +9,7 @@ class LSTMBase(torch.nn.Module):
 
         self.hidden_dim = hidden_dim
         self.word_embeddings = torch.nn.Embedding(vocab_size, embedding_dim)
-        self.dropout = torch.nn.Dropout(0.2)
+        self.dropout = torch.nn.Dropout(0.1)
         self.lstm = torch.nn.LSTM(embedding_dim, hidden_dim, batch_first=True, bidirectional=True, num_layers=2)
         self.dense = torch.nn.Linear(hidden_dim, n_classes)
 
