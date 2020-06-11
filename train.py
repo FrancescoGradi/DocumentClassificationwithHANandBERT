@@ -90,7 +90,7 @@ def kdLstmTrain(dataset_name, n_classes, teacher_path, validation=True, from_che
     if from_checkpoint == True:
         print('Restoring model from checkpoint...')
         torch.cuda.empty_cache()
-        checkpoint = torch.load(model_path, map_location=device)
+        checkpoint = torch.load(student_path, map_location=device)
         student_model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         for state in optimizer.state.values():
@@ -652,5 +652,5 @@ if __name__ == '__main__':
     dataset_name = 'yelp_2014'
     n_classes = 5
     #lstmTrain(dataset_name=dataset_name, n_classes=n_classes)
-    kdLstmTrain(dataset_name, n_classes, teacher_path='models/model_yelp_2014_bert/20200607-201214')
+    kdLstmTrain(dataset_name, n_classes, from_checkpoint=True, student_path='models/model_yelp_2014_kdLstm/ckp_0epochs_20200610-202550', teacher_path='models/model_yelp_2014_bert/20200607-201214')
     #bertTrain(dataset_name, n_classes)
