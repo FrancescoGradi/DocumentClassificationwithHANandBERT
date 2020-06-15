@@ -80,9 +80,10 @@ def HanModel(n_classes, len_word_index, embedding_matrix, MAX_SENTENCE_NUM=40, M
     # Word Encoder
     word_input = Input(shape=(MAX_WORD_NUM,), dtype='int32', name='word_input')
     word_sequences = Embedding(len_word_index + 1, EMBED_SIZE, weights=[embedding_matrix], input_length=MAX_WORD_NUM,
-                               trainable=False, name='word_embedding')(word_input)
+                               trainable=True, name='word_embedding')(word_input)
+    emb_drop = Dropout(rate=0.1, name='word_dropout')(word_sequences)
     word_gru = Bidirectional(GRU((int)(EMBED_SIZE / 2), return_sequences=True,
-                                 recurrent_regularizer=regularizers.l2(0.001)), name='word_gru')(word_sequences)
+                                 recurrent_regularizer=regularizers.l2(0.001)), name='word_gru')(emb_drop)
     word_dense = Dense(EMBED_SIZE, activation='relu', name='word_dense')(word_gru)
     word_att, word_coeff = AttentionLayer(EMBED_SIZE, return_coefficients=True, name='word_attention')(word_dense)
 

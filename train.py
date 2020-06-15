@@ -524,10 +524,10 @@ def bertTrain(dataset_name, n_classes, validation=True, from_checkpoint=False, m
     print("Total training took {:} (h:mm:ss)".format(formatTime(time.time() - total_t0)))
 
 
-def hanTrain():
+def hanTrain(dataset_name, n_classes, cleaned=False):
     physical_devices = tf.config.list_physical_devices('GPU')
     tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
-    '''
+
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 15  # maximum number of sentences in one document
     MAX_WORD_NUM = 25  # maximum number of words in each sentence
@@ -538,10 +538,12 @@ def hanTrain():
 
     # Reading dataset with Pandas
 
+    '''
+
     dataset_name = "yelp_2014"
     data_df = pd.read_csv("datasets/" + dataset_name + ".csv")
     cleaned = True
-    '''
+    
     
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 20  # maximum number of sentences in one document
@@ -552,6 +554,8 @@ def hanTrain():
     INIT_LR = 1e-2
 
     # Reading JSON dataset with Pandas
+
+    
 
     dataset_name = 'IMDB'
     train_df = pd.read_csv('datasets/' + dataset_name + '/train.tsv', sep='\t')
@@ -564,7 +568,7 @@ def hanTrain():
     data_df['label'] = data_df['label'].apply(lambda x: len(str(x)) - 1)
     
     cleaned = False
-    '''
+    
 
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 25  # maximum number of sentences in one document
@@ -651,6 +655,7 @@ def hanTrain():
 if __name__ == '__main__':
     dataset_name = 'yelp_2014'
     n_classes = 5
+    hanTrain(dataset_name, n_classes)
     #lstmTrain(dataset_name=dataset_name, n_classes=n_classes)
-    kdLstmTrain(dataset_name, n_classes, from_checkpoint=True, student_path='models/model_yelp_2014_kdLstm/ckp_0epochs_20200610-202550', teacher_path='models/model_yelp_2014_bert/20200607-201214')
+    #kdLstmTrain(dataset_name, n_classes, from_checkpoint=True, student_path='models/model_yelp_2014_kdLstm/ckp_1epochs_20200611-165400', teacher_path='models/model_yelp_2014_bert/20200607-201214')
     #bertTrain(dataset_name, n_classes)
