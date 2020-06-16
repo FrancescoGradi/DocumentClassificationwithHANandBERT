@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import tensorflow_datasets as tfds
+
 import ijson
 import json
 import sty
@@ -268,6 +270,55 @@ def formatTime(elapsed):
     """
     elapsed_rounded = int(round((elapsed)))
     return str(datetime.timedelta(seconds=elapsed_rounded))
+
+
+def readIMDB():
+    """
+    Function to read IMDB dataset (.tsv format), contained in datasets directory.
+    :return: pandas dataframe of dataset
+    """
+    dataset_name = 'IMDB'
+    train_df = pd.read_csv('datasets/' + dataset_name + '/train.tsv', sep='\t')
+    train_df.columns = ['label', 'text']
+    test_df = pd.read_csv('datasets/' + dataset_name + '/test.tsv', sep='\t')
+    test_df.columns = ['label', 'text']
+    dev_df = pd.read_csv('datasets/' + dataset_name + '/dev.tsv', sep='\t')
+    dev_df.columns = ['label', 'text']
+    data_df = pd.concat([train_df, test_df, dev_df], ignore_index=True)
+    data_df['label'] = data_df['label'].apply(lambda x: len(str(x)) - 1)
+
+    return data_df
+
+
+def readImdbSmall():
+    """
+    Function to read imdb_reviews dataset from tensorflow.
+    :return: pandas dataframe of dataset
+    """
+    dataset_name = 'imdb_reviews'
+    ds = tfds.load(dataset_name, split='train')
+    reviews = []
+    for element in ds.as_numpy_iterator():
+        reviews.append((element['text'].decode('utf-8'), element['label']))
+
+    data_df = pd.DataFrame(data=reviews, columns=['text', 'label'])
+
+
+def readYelp():
+    """
+    Function to read Yelp 2014 dataset (.csv format), contained in datasets directory.
+    :return: pandas dataframe of dataset
+    """
+    dataset_name = "yelp_2014"
+    data_df = pd.read_csv("datasets/" + dataset_name + ".csv")
+    data_df = data_df[['label', 'text']]
+    for index, row in data_df.iterrows():
+        try:
+            row['label'] = int(float(row['label'])) - 1
+        except:
+            row['label'] = 0
+
+    return data_df
 
 
 class CustomDataset(Dataset):

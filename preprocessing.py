@@ -18,7 +18,7 @@ from transformers import BertTokenizer, TFBertForSequenceClassification
 from utils import cleanString, splitDataframe, wordToSeq, toCategorical, CustomDataset
 
 
-def preprocessing(dataset_name, data_df, save_all=False, cleaned=False, MAX_FEATURES=200000, MAX_SENTENCE_NUM=40,
+def hanPreprocessing(dataset_name, data_df, save_all=False, cleaned=False, MAX_FEATURES=200000, MAX_SENTENCE_NUM=40,
                   MAX_WORD_NUM=50, EMBED_SIZE=100):
     '''
     :param dataset_name: a string that represents the name of the dataset (it used to save some stuff).
@@ -178,12 +178,6 @@ if __name__ == '__main__':
         reviews.append((element['text'].decode('utf-8'), element['label']))
 
     data_df = pd.DataFrame(data=reviews, columns=['text', 'label'])
-
-    
-    dataset_name = "imdb_complete"
-    data_df = pd.read_json("datasets/" + dataset_name + ".json")
-    data_df = data_df[["rating", "review"]]
-    data_df.columns = ["label", "text"]
     
 
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index

@@ -26,7 +26,7 @@ from torch import cuda
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from preprocessing import preprocessing
+from preprocessing import hanPreprocessing
 from hanModel import HanModel
 from bertModel import BertModel
 from lstmModel import LSTMBase
@@ -601,7 +601,7 @@ def hanTrain(dataset_name, n_classes, cleaned=False):
         word_index = data_cleaned[7]
         n_classes = data_cleaned[8]
     else:
-        x_train, y_train, x_val, y_val, x_test, y_test, embedding_matrix, word_index, n_classes = preprocessing(
+        x_train, y_train, x_val, y_val, x_test, y_test, embedding_matrix, word_index, n_classes = hanPreprocessing(
             dataset_name=dataset_name, data_df=data_df, save_all=True, cleaned=cleaned, MAX_FEATURES=MAX_FEATURES,
             MAX_SENTENCE_NUM=MAX_SENTENCE_NUM, MAX_WORD_NUM=MAX_WORD_NUM, EMBED_SIZE=EMBED_SIZE)
 
