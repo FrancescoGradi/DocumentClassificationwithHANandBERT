@@ -287,7 +287,7 @@ def readIMDB():
     data_df = pd.concat([train_df, test_df, dev_df], ignore_index=True)
     data_df['label'] = data_df['label'].apply(lambda x: len(str(x)) - 1)
 
-    return data_df
+    return dataset_name, 10, data_df
 
 
 def readImdbSmall():
@@ -302,6 +302,8 @@ def readImdbSmall():
         reviews.append((element['text'].decode('utf-8'), element['label']))
 
     data_df = pd.DataFrame(data=reviews, columns=['text', 'label'])
+
+    return dataset_name, 2, data_df
 
 
 def readYelp():
@@ -318,7 +320,7 @@ def readYelp():
         except:
             row['label'] = 0
 
-    return data_df
+    return dataset_name, 5, data_df
 
 
 class CustomDataset(Dataset):

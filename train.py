@@ -525,9 +525,9 @@ def bertTrain(dataset_name, n_classes, validation=True, from_checkpoint=False, m
 
 
 def hanTrain(dataset_name, n_classes, cleaned=False):
-    physical_devices = tf.config.list_physical_devices('GPU')
-    tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
-
+    #physical_devices = tf.config.list_physical_devices('GPU')
+    #tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
+    '''
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 15  # maximum number of sentences in one document
     MAX_WORD_NUM = 25  # maximum number of words in each sentence
@@ -537,8 +537,6 @@ def hanTrain(dataset_name, n_classes, cleaned=False):
     INIT_LR = 1e-2
 
     # Reading dataset with Pandas
-
-    '''
 
     dataset_name = "yelp_2014"
     data_df = pd.read_csv("datasets/" + dataset_name + ".csv")
@@ -555,8 +553,6 @@ def hanTrain(dataset_name, n_classes, cleaned=False):
 
     # Reading JSON dataset with Pandas
 
-    
-
     dataset_name = 'IMDB'
     train_df = pd.read_csv('datasets/' + dataset_name + '/train.tsv', sep='\t')
     train_df.columns = ['label', 'text']
@@ -568,16 +564,16 @@ def hanTrain(dataset_name, n_classes, cleaned=False):
     data_df['label'] = data_df['label'].apply(lambda x: len(str(x)) - 1)
     
     cleaned = False
-    
+    '''
 
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 25  # maximum number of sentences in one document
     MAX_WORD_NUM = 40  # maximum number of words in each sentence
     EMBED_SIZE = 100  # vector size of word embedding
-    BATCH_SIZE = 64
-    NUM_EPOCHS = 10
+    BATCH_SIZE = 128
+    NUM_EPOCHS = 45
     INIT_LR = 1e-2
-    
+    '''
     dataset_name = 'imdb_reviews'
     ds = tfds.load(dataset_name, split='train')
     reviews = []

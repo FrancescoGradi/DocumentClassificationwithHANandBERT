@@ -1,6 +1,7 @@
 import pickle
 import torch
 import time
+import os
 import numpy as np
 import pandas as pd
 
@@ -134,6 +135,34 @@ def hanPredict(review, review_label, dataset_name, model_path, n_sentences=3, n_
     printAttentionedWordsAndSentences(review, all_sent_index, sent_index, sorted_wordlist, MAX_SENTENCE_NUM)
 
 
+def hanEvaluate(dataset_name, model_path, MAX_FEATURES=200000, MAX_SENTENCE_NUM=15, MAX_WORD_NUM=25):
+    """
+    Test set evaluating for Han model. This function print accuracy and a scikit learn classification.
+    report with f1-score. It uses gpu.
+    :param dataset_name: string of dataset name.
+    :param model_path: path of saved pytorch model fine tuned bert network (or checkpoint with isCheckpoint as True).
+    :return: None
+    """
+    if (os.path.isfile('datasets/' + dataset_name + '_cleaned.txt')):
+        with open('datasets/' + dataset_name + '_cleaned.txt', 'rb') as f:
+            data_cleaned = pickle.load(f)
+        x_test = data_cleaned[4]
+        y_test = data_cleaned[5]
+        embedding_matrix = data_cleaned[6]
+        word_index = data_cleaned[7]
+        n_classes = data_cleaned[8]
+    else:
+        print("Please, use preprocessing function to save dataset first.")
+        return None
+
+    model = load_model(model_path, custom_objects={'AttentionLayer': AttentionLayer})
+
+    print("Evaluating network on Test Set...")
+    BATCH_SIZE = 64
+    predictions = model.predict(x_test, batch_size=BATCH_SIZE)
+    print(classification_report(y_test.argmax(axis=1), predictions.argmax(axis=1), digits=4))
+
+
 def bertPredict(dataset_name, n_classes, model_path, text, label):
     """
     This function predicts label of instance of a bert pretrained dataset, using cpu, printing results.
@@ -251,7 +280,7 @@ def bertEvaluate(dataset_name, n_classes, model_path, isCheckpoint=False):
     print("  Test Loss: {0:.2f}".format(valid_loss))
     print("")
 
-    print(classification_report(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1)))
+    print(classification_report(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1), digits=4))
 
 
 def getRandomReview(container_path):
@@ -338,7 +367,7 @@ def lstmEvaluate(dataset_name, n_classes, model_path, isCheckpoint=False):
     print("  Test Loss: {0:.2f}".format(valid_loss))
     print("")
 
-    print(classification_report(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1)))
+    print(classification_report(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1), digits=4))
 
 if __name__ == '__main__':
 
