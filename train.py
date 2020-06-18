@@ -187,7 +187,7 @@ def kdLstmTrain(dataset_name, n_classes, teacher_path, validation=True, from_che
                     outputs = torch.softmax(outputs, dim=1)
 
                     total_eval_loss += classification_criterion(outputs, torch.max(targets, 1)[1]) + \
-                                       (LAMBDA * distillation_criterion(outputs, teacher_model(ids, mask, token_type_ids)))
+                                       (LAMBDA * F.kl_div(outputs, torch.softmax(teacher_model(ids, mask, token_type_ids), dim=1), 'batchmean'))
 
                     fin_targets.extend(targets.cpu().detach().numpy().tolist())
                     fin_outputs.extend(torch.softmax(outputs, dim=1).cpu().detach().numpy().tolist())

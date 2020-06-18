@@ -301,7 +301,7 @@ def lstmEvaluate(dataset_name, n_classes, model_path, isCheckpoint=False):
         data_cleaned = pickle.load(f)
 
 
-    test_set = data_cleaned[0]
+    test_set = data_cleaned[2]
     MAX_LEN = data_cleaned[3]
 
     TEST_BATCH_SIZE = 64
