@@ -159,7 +159,12 @@ def hanEvaluate(dataset_name, model_path, MAX_FEATURES=200000, MAX_SENTENCE_NUM=
 
     print("Evaluating network on Test Set...")
     BATCH_SIZE = 64
+    total_t0 = time.time()
     predictions = model.predict(x_test, batch_size=BATCH_SIZE)
+
+    print("Total evaluating took {:} (h:mm:ss)".format(formatTime(time.time() - total_t0)))
+    print("")
+
     print(classification_report(y_test.argmax(axis=1), predictions.argmax(axis=1), digits=4))
 
 
@@ -280,6 +285,9 @@ def bertEvaluate(dataset_name, n_classes, model_path, isCheckpoint=False):
     print("  Test Loss: {0:.2f}".format(valid_loss))
     print("")
 
+    print("Total evaluating took {:} (h:mm:ss)".format(formatTime(time.time() - t0)))
+    print("")
+
     print(classification_report(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1), digits=4))
 
 
@@ -367,11 +375,14 @@ def lstmEvaluate(dataset_name, n_classes, model_path, isCheckpoint=False):
     print("  Test Loss: {0:.2f}".format(valid_loss))
     print("")
 
+    print("Total evaluating took {:} (h:mm:ss)".format(formatTime(time.time() - t0)))
+    print("")
+
     print(classification_report(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1), digits=4))
 
 if __name__ == '__main__':
 
-    '''
+
     physical_devices = tf.config.list_physical_devices('GPU')
     tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
 
@@ -384,7 +395,7 @@ if __name__ == '__main__':
     INIT_LR = 1e-2
 
     dataset_name = 'yelp_2014'
-    model_path = 'models/model_yelp_2014/20200527-220312.h5'
+    model_path = 'models/model_yelp_2014/20200615-210355.h5'
     n_sentences = 2
     n_words = 5
 
@@ -402,7 +413,6 @@ if __name__ == '__main__':
 
     lstmEvaluate(dataset_name='yelp_2014', n_classes=5, isCheckpoint=True, model_path='models/model_yelp_2014_lstm/ckp_7epochs_20200610-152253')
 
-    '''
     
     dataset_name = 'IMDB'
     test_df = pd.read_csv('datasets/' + dataset_name + '/test.tsv', sep='\t')

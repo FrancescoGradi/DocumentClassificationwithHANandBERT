@@ -231,9 +231,9 @@ def printAttentionedWordsAndSentences(review, all_sent_index, sent_index, sorted
     all_sent_index = np.array(all_sent_index[:len(sentences)])
 
     nothing = '     '
-    low = sty.bg.li_blue + '     ' + sty.bg.rs
-    medium = sty.bg(27) + '     ' + sty.bg.rs
-    high = sty.bg.da_blue + '     ' + sty.bg.rs
+    low = sty.bg(200, 200, 255) + '     ' + sty.bg.rs
+    medium = sty.bg(100, 100, 255) + '     ' + sty.bg.rs
+    high = sty.bg(0, 0, 255) + '     ' + sty.bg.rs
 
     high_word, medium_word, low_word = np.array_split(sorted_wordlist, 3)
     high_sent, medium_sent, low_sent, nothing_sent = np.array_split(all_sent_index, 4)
@@ -252,11 +252,11 @@ def printAttentionedWordsAndSentences(review, all_sent_index, sent_index, sorted
         sent_to_print = ''
         for idy, word in enumerate(tokenize.word_tokenize(sent)):
             if word in high_word and idx in sent_index:
-                sent_to_print += (sty.bg.da_red + word + sty.bg.rs + ' ')
+                sent_to_print += (sty.bg(255, 70, 70) + word + sty.bg.rs + ' ')
             elif word in medium_word and idx in sent_index:
-                sent_to_print += (sty.bg(255, 0, 0) + word + sty.bg.rs + ' ')
+                sent_to_print += (sty.bg(255, 140, 140) + word + sty.bg.rs + ' ')
             elif word in low_word and idx in sent_index:
-                sent_to_print += (sty.bg(255, 92, 92) + word + sty.bg.rs + ' ')
+                sent_to_print += (sty.bg(255, 220, 220) + word + sty.bg.rs + ' ')
             else:
                 sent_to_print += (word + ' ')
         print(sent_color, idx, sent_to_print)
