@@ -56,8 +56,8 @@ papers results.
 ## Visualization of Attention
 
 This code allows to visualize attention in HAN model (in `hanPredict` function), because it is relative easy to extract 
-partial model weights to reconstruct the most attentioned words and sentences. Here blue represents most important 
-sentences and red words.
+partial model weights to reconstruct the most attentioned words and sentences. Here two reviews from Yelp, blue 
+represents most important sentences and red most relevant words.
 
 <div>
 <p align="center">
@@ -75,6 +75,61 @@ sentences and red words.
 
 **HAN PREDICTION: 1, TARGET: 1**. They was attentioned the first and the last sentences, the word _'recommend'_ here has 
 a different sense, because context is different.
+
+## Reproducing Experiments
+
+### Dependencies
+
+This project uses PyTorch and Tensorflow 2 (only for HAN model), for training GPU is needed. Code was developed and 
+tested with these main dependencies:
+
+- Python 3.7.7
+- numpy 1.18.1
+- ntlk 3.4.5
+- pandas 1.0.3
+- pytorch 1.4.0
+- tensorboard 2.1.0
+- tensorflow 2.1.0
+- transformers 2.10.0
+
+All dependencies can be installed with command line:
+
+```sh
+$ pip install -r requirements.txt
+```
+
+After cloned this repository.
+
+### How make it works
+
+The pipeline is get the dataset in pandas dataframe format, preprocessing (it automatically splits train, valid and test 
+sets), training and evalutaing. Here a `main.py` example:
+
+```python
+from preprocessing import bertPreprocessing
+from train import lstmTrain
+from utils import readIMDB
+
+dataset_name, n_classes, data_df = readIMDB()
+
+bertPreprocessing(dataset_name, data_df, MAX_LEN=128)
+lstmTrain(dataset_name, n_classes, TRAIN_BATCH_SIZE=64, EPOCHS=20, LEARNING_RATE=1e-03)
+```
+
+Now logs are continuously saved and update. _Tensorboard_ is a good tool to tracking and visualizing metrics during 
+training:
+
+```sh
+tensorboard --logdir logs/IMDB_lstm
+```
+
+At the end, it is possible to evaluate model results on test set in this way:
+
+```python
+from predict import lstmEvaluate
+
+lstmEvaluate('IMDB', 10, model_path='models/model_imdb_reviews_lstm/ckp_12epochs_20200618-133908', isCheckpoint=True)
+```
 
 
 ## References

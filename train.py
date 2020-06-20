@@ -215,7 +215,8 @@ def kdLstmTrain(dataset_name, n_classes, teacher_path, validation=True, from_che
     print("Total training took {:} (h:mm:ss)".format(formatTime(time.time() - total_t0)))
 
 
-def lstmTrain(dataset_name, n_classes, validation=True, from_checkpoint=False, model_path=None):
+def lstmTrain(dataset_name, n_classes, TRAIN_BATCH_SIZE=64, EPOCHS=30, LEARNING_RATE=1e-03, EMBEDDING_DIM=50,
+              HIDDEN_DIM=256, validation=True, from_checkpoint=False, model_path=None):
     device = 'cuda' if cuda.is_available() else 'cpu'
 
     with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
@@ -226,12 +227,7 @@ def lstmTrain(dataset_name, n_classes, validation=True, from_checkpoint=False, m
     test_set = data_cleaned[2]
     MAX_LEN = data_cleaned[3]
 
-    TRAIN_BATCH_SIZE = 64
     VALID_BATCH_SIZE = 8
-    EPOCHS = 40
-    LEARNING_RATE = 1e-03
-    EMBEDDING_DIM = 50
-    HIDDEN_DIM = 256
     start_epoch = 0
 
     train_params = {'batch_size': TRAIN_BATCH_SIZE,
