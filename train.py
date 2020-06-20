@@ -50,7 +50,7 @@ def kdLstmTrain(dataset_name, n_classes, teacher_path, validation=True, from_che
     LEARNING_RATE = 1e-03
     EMBEDDING_DIM = 50
     HIDDEN_DIM = 256
-    LAMBDA = 1
+    LAMBDA = 0.5
     start_epoch = 0
 
     train_params = {'batch_size': TRAIN_BATCH_SIZE,
