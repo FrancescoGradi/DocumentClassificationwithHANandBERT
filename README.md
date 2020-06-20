@@ -102,8 +102,9 @@ After cloned this repository.
 
 ### How make it works
 
-The pipeline is get the dataset in pandas dataframe format, preprocessing (it automatically splits train, valid and test 
-sets), training and evalutaing. Here a `main.py` example:
+The pipeline is get the dataset in pandas dataframe format (there are some utils functions, they expect dataset in 
+`datasets/` local directory), preprocessing (it automatically splits train, valid and test sets), training and 
+evaluating. Here a `main.py` example:
 
 ```python
 from preprocessing import bertPreprocessing
@@ -123,12 +124,13 @@ training:
 tensorboard --logdir logs/IMDB_lstm
 ```
 
-At the end, it is possible to evaluate model results on test set in this way:
+At the end the model is saved in `models/model_IMDB_lstm/`, it is possible to evaluate model results on test set adding
+the model path and running this function:
 
 ```python
 from predict import lstmEvaluate
 
-lstmEvaluate('IMDB', 10, model_path='models/model_imdb_reviews_lstm/ckp_12epochs_20200618-133908', isCheckpoint=True)
+lstmEvaluate('IMDB', 10, model_path='models/model_imdb_reviews_lstm/20200618-133908')
 ```
 
 
