@@ -55,7 +55,7 @@ papers results.
 
 ## Visualization of Attention
 
-This code allows to visualize attention in HAN model (in `hanPredict` function), because it is relative easy to extract 
+This code allows to visualize attention in HAN model (with `hanPredict` function), because it is relative easy to extract 
 partial model weights to reconstruct the most attentioned words and sentences. Here two reviews from Yelp, blue 
 represents most important sentences and red most relevant words.
 
