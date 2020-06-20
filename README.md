@@ -1,8 +1,8 @@
-# Document Classification with HAN, LSTM e BERT
+# Document Classification with HAN, LSTM and BERT
 
 Thanks to Deep Learning, Natural Language Processing (NLP) has grown a lot over the past few years. This project deals 
 with some of the latest techniques of Document Classification, an important task in NLP. It consists to assign a 
-document to one category. If category is actually a _sentiment_ (a numeric evaluation of something), we talk about 
+document to one category. If category is actually a _sentiment_ (a numeric evaluation of text), we talk about 
 Sentiment Analysis, like datasets take in this implementation.
 
 ## This Project
@@ -102,7 +102,7 @@ After cloned this repository.
 
 ### How make it works
 
-The pipeline is get the dataset in pandas dataframe format (there are some utils functions, they expect dataset in 
+The pipeline is getting the dataset in pandas dataframe format (there are some utils functions, they expect dataset in 
 `datasets/` local directory), preprocessing (it automatically splits train, valid and test sets), training and 
 evaluating. Here a `main.py` example:
 
@@ -130,7 +130,7 @@ the model path and running this function:
 ```python
 from predict import lstmEvaluate
 
-lstmEvaluate('IMDB', 10, model_path='models/model_imdb_reviews_lstm/20200618-133908')
+lstmEvaluate('IMDB', 10, model_path='models/model_IMDB_lstm/20200618-133908')
 ```
 
 

@@ -13,7 +13,7 @@ if __name__ == '__main__':
     # lstmTrain(dataset_name, n_classes)
     # lstmEvaluate(dataset_name, n_classes, model_path='models/model_imdb_reviews_lstm/ckp_12epochs_20200618-133908', isCheckpoint=True)
 
-    kdLstmTrain(dataset_name, n_classes, teacher_path='models/model_IMDB_bert/20200605-184848', student_path='models/model_IMDB_kdLstm/ckp_1epochs_20200619-121458', from_checkpoint=True)
+    kdLstmTrain(dataset_name, n_classes, teacher_path='models/model_IMDB_bert/20200605-184848', student_path='models/model_IMDB_kdLstm/ckp_9epochs_20200620-013418', from_checkpoint=True)
     # lstmEvaluate(dataset_name, n_classes, model_path='models/model_imdb_reviews_kdLstm/ckp_17epochs_20200618-222526', isCheckpoint=True)
 
     # hanTrain(dataset_name, n_classes)
