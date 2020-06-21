@@ -53,7 +53,7 @@ papers results.
 | LSTM_reg    | 94.2       | 52.7 | 71.1      |
 | KD-LSTM_reg | 94.6       | -    | -         |
 
-## Visualization of Attention
+## Visualization of Attention in HAN
 
 This code allows to visualize attention in HAN model (with `hanPredict` function), because it is relative easy to extract 
 partial model weights to reconstruct the most attentioned words and sentences. Here two reviews from Yelp, blue 
