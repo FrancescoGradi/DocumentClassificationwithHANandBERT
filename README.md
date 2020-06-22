@@ -29,8 +29,8 @@ network (LSTM) to achieve better results [4].
 
 To test models, three Sentiment Analysis datasets was chosen:
 
-- **IMDB Small**: short version of IMDB (about 25 000 film reviews), with only two sentiments: positive or negative. This dataset can be retrieved 
-in TensorFlow datasets.
+- **IMDB Small**: short version of IMDB (about 25 000 film reviews), with only two sentiments: positive or negative. 
+This dataset can be retrieved in TensorFlow datasets.
 
 - **IMDB**: large version with about 135 000 reviews and 10 sentiments (stars from 1 to 10). It was found 
 <a href="https://github.com/castorini/hedwig ">here</a>.
@@ -98,7 +98,8 @@ All dependencies can be installed with command line:
 $ pip install -r requirements.txt
 ```
 
-After cloned this repository.
+After cloned this repository. For Han Preprocessing `glove.6B.100d.txt` is also required (for this project was chosen 
+100 dimension version) that can be retrieved in <a href="https://nlp.stanford.edu/projects/glove/">GloVe site</a>.
 
 ### How make it works
 
@@ -121,7 +122,7 @@ Now logs are continuously saved and update. _Tensorboard_ is a good tool to trac
 training:
 
 ```sh
-tensorboard --logdir logs/IMDB_lstm
+$ tensorboard --logdir logs/IMDB_lstm
 ```
 
 At the end the model is saved in `models/model_IMDB_lstm/`, it is possible to evaluate model results on test set adding
