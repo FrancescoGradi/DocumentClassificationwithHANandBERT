@@ -33,24 +33,23 @@ from lstmModel import LSTMBase
 from utils import wordAndSentenceCounter, formatTime
 
 
-def kdLstmTrain(dataset_name, n_classes, teacher_path, validation=True, from_checkpoint=False, student_path=None):
+def kdLstmTrain(dataset_name, n_classes, teacher_path, TRAIN_BATCH_SIZE=16, EPOCHS=30, LEARNING_RATE=1e-03,
+                EMBEDDING_DIM=50, HIDDEN_DIM=256, LAMBDA=0.5, validation=True, from_checkpoint=False, student_path=None):
     device = 'cuda' if cuda.is_available() else 'cpu'
 
-    with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
-        data_cleaned = pickle.load(f)
+    if (os.path.isfile('datasets/' + dataset_name + '_bert_cleaned.txt')):
+        with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
+            data_cleaned = pickle.load(f)
+    else:
+        print('Please, run bertPreprocessing first.')
+        return
 
     training_set = data_cleaned[0]
     validation_set = data_cleaned[1]
     test_set = data_cleaned[2]
     MAX_LEN = data_cleaned[3]
 
-    TRAIN_BATCH_SIZE = 16
     VALID_BATCH_SIZE = 8
-    EPOCHS = 30
-    LEARNING_RATE = 1e-03
-    EMBEDDING_DIM = 50
-    HIDDEN_DIM = 256
-    LAMBDA = 0.5
     start_epoch = 0
 
     train_params = {'batch_size': TRAIN_BATCH_SIZE,
@@ -219,8 +218,12 @@ def lstmTrain(dataset_name, n_classes, TRAIN_BATCH_SIZE=64, EPOCHS=30, LEARNING_
               HIDDEN_DIM=256, validation=True, from_checkpoint=False, model_path=None):
     device = 'cuda' if cuda.is_available() else 'cpu'
 
-    with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
-        data_cleaned = pickle.load(f)
+    if (os.path.isfile('datasets/' + dataset_name + '_bert_cleaned.txt')):
+        with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
+            data_cleaned = pickle.load(f)
+    else:
+        print('Please, run bertPreprocessing first.')
+        return
 
     training_set = data_cleaned[0]
     validation_set = data_cleaned[1]
@@ -368,21 +371,23 @@ def lstmTrain(dataset_name, n_classes, TRAIN_BATCH_SIZE=64, EPOCHS=30, LEARNING_
     print("Total training took {:} (h:mm:ss)".format(formatTime(time.time() - total_t0)))
 
 
-def bertTrain(dataset_name, n_classes, validation=True, from_checkpoint=False, model_path=None):
+def bertTrain(dataset_name, n_classes, TRAIN_BATCH_SIZE=16, EPOCHS=3, LEARNING_RATE=1e-05, validation=True,
+              from_checkpoint=False, model_path=None):
     device = 'cuda' if cuda.is_available() else 'cpu'
 
-    with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
-        data_cleaned = pickle.load(f)
+    if (os.path.isfile('datasets/' + dataset_name + '_bert_cleaned.txt')):
+        with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
+            data_cleaned = pickle.load(f)
+    else:
+        print('Please, run bertPreprocessing first.')
+        return
 
     training_set = data_cleaned[0]
     validation_set = data_cleaned[1]
     test_set = data_cleaned[2]
     MAX_LEN = data_cleaned[3]
 
-    TRAIN_BATCH_SIZE = 16
     VALID_BATCH_SIZE = 8
-    EPOCHS = 3
-    LEARNING_RATE = 1e-05
     start_epoch = 0
 
     train_params = {'batch_size': TRAIN_BATCH_SIZE,
@@ -593,9 +598,8 @@ def hanTrain(dataset_name, n_classes, cleaned=False):
         word_index = data_cleaned[7]
         n_classes = data_cleaned[8]
     else:
-        x_train, y_train, x_val, y_val, x_test, y_test, embedding_matrix, word_index, n_classes = hanPreprocessing(
-            dataset_name=dataset_name, data_df=data_df, save_all=True, cleaned=cleaned, MAX_FEATURES=MAX_FEATURES,
-            MAX_SENTENCE_NUM=MAX_SENTENCE_NUM, MAX_WORD_NUM=MAX_WORD_NUM, EMBED_SIZE=EMBED_SIZE)
+        print('Please, run hanPreprocessing first.')
+        return
 
 
     model = HanModel(n_classes=n_classes, len_word_index=len(word_index), embedding_matrix=embedding_matrix,
@@ -642,12 +646,3 @@ def hanTrain(dataset_name, n_classes, cleaned=False):
     plt.ylabel("Loss/Accuracy")
     plt.legend()
     plt.show()
-
-
-if __name__ == '__main__':
-    dataset_name = 'yelp_2014'
-    n_classes = 5
-    hanTrain(dataset_name, n_classes)
-    #lstmTrain(dataset_name=dataset_name, n_classes=n_classes)
-    #kdLstmTrain(dataset_name, n_classes, from_checkpoint=True, student_path='models/model_yelp_2014_kdLstm/ckp_1epochs_20200611-165400', teacher_path='models/model_yelp_2014_bert/20200607-201214')
-    #bertTrain(dataset_name, n_classes)
