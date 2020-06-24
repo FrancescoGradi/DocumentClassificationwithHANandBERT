@@ -15,7 +15,7 @@ from sklearn.model_selection import train_test_split
 from nltk.corpus import stopwords
 from transformers import BertTokenizer, TFBertForSequenceClassification
 
-from utils import cleanString, splitDataframe, wordToSeq, toCategorical, CustomDataset
+from utils import cleanString, splitDataframe, wordToSeq, toCategorical, CustomDataset, CustomDatasetWithSoftTargets
 
 
 def hanPreprocessing(dataset_name, data_df, save_all=False, cleaned=False, MAX_FEATURES=200000, MAX_SENTENCE_NUM=40,
@@ -163,6 +163,44 @@ def bertPreprocessing(dataset_name, data_df, MAX_LEN=128, save_all=True):
     if save_all is True:
         os.makedirs(os.path.dirname('datasets/' + dataset_name + '_bert_cleaned.txt'), exist_ok=True)
         with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'wb') as f:
+            pickle.dump([training_set, validation_set, test_set, MAX_LEN], f)
+
+    return training_set, validation_set, test_set
+
+
+def kdPreprocessing(dataset_name, data_df, MAX_LEN=128, save_all=True):
+    """
+    Dataset preparation for Bert Model and KD models. It is splitted (0.8 train, 0.1 valid and 0.1 test) and sets are
+    returned. Every set is a CustomDatasetWithSoftTargets class (see utils.py) that return data in Bert format.
+    :param dataset_name: string of dataset name.
+    :param data_df: dataset in dataframe pandas format.
+    :param MAX_LEN: it represents total words represented in bert encoding (other words will be ignored).
+    :param save_all: boolean that specifies if save all data for time saving before training or network evaluating.
+    :return: training_set, validation_set, test_set in CustomDataset format.
+    """
+
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
+    data_df['soft_targets'] = 0
+
+    train_size = 0.8
+    train_dataset = data_df.sample(frac=train_size, random_state=200).reset_index(drop=True)
+    tmp_dataset = data_df.drop(train_dataset.index).reset_index(drop=True)
+    test_dataset = tmp_dataset.sample(frac=0.5, random_state=200).reset_index(drop=True)
+    val_dataset = tmp_dataset.drop(test_dataset.index).reset_index(drop=True)
+
+    print("FULL Dataset: {}".format(data_df.shape))
+    print("TRAIN Dataset: {}".format(train_dataset.shape))
+    print("TEST Dataset: {}".format(test_dataset.shape))
+    print("VALID Dataset: {}".format(val_dataset.shape))
+
+    training_set = CustomDatasetWithSoftTargets(train_dataset, tokenizer, MAX_LEN)
+    validation_set = CustomDatasetWithSoftTargets(val_dataset, tokenizer, MAX_LEN)
+    test_set = CustomDatasetWithSoftTargets(test_dataset, tokenizer, MAX_LEN)
+
+    if save_all is True:
+        os.makedirs(os.path.dirname('datasets/' + dataset_name + '_kd_cleaned.txt'), exist_ok=True)
+        with open('datasets/' + dataset_name + '_kd_cleaned.txt', 'wb') as f:
             pickle.dump([training_set, validation_set, test_set, MAX_LEN], f)
 
     return training_set, validation_set, test_set

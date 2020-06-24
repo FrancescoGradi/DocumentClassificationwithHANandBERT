@@ -362,3 +362,49 @@ class CustomDataset(Dataset):
             'token_type_ids': torch.tensor(token_type_ids, dtype=torch.long),
             'targets': torch.tensor(self.label[index], dtype=torch.long)
         }
+
+
+class CustomDatasetWithSoftTargets(Dataset):
+    """
+    Custum class that provides tokenization (with appropriatly Bert tokenized in input) of every text of a pandas
+    dataframe in input. Also it convertes a int label (target value for the network) in one hot encoding format.
+    __getitem__ returns ids (bert encoding of max_len), the relative mask and token_type_ids. Also the processed label
+    for the network, renamed 'target'.
+    """
+    def __init__(self, dataframe, tokenizer, max_len):
+        self.tokenizer = tokenizer
+        self.data = dataframe
+        self.text = dataframe.text
+        self.soft_targets = dataframe.soft_targets
+        self.label = to_categorical(self.data.label)
+        self.max_len = max_len
+
+    def __len__(self):
+        return len(self.text)
+
+    def setSoftTargets(self, soft_targets):
+        self.soft_targets = soft_targets
+
+    def __getitem__(self, index):
+        text = str(self.text[index])
+        text = " ".join(text.split())
+
+        inputs = self.tokenizer.encode_plus(
+            text,
+            None,
+            add_special_tokens=True,
+            max_length=self.max_len,
+            pad_to_max_length=True,
+            return_token_type_ids=True
+        )
+        ids = inputs['input_ids']
+        mask = inputs['attention_mask']
+        token_type_ids = inputs["token_type_ids"]
+
+        return {
+            'ids': torch.tensor(ids, dtype=torch.long),
+            'mask': torch.tensor(mask, dtype=torch.long),
+            'token_type_ids': torch.tensor(token_type_ids, dtype=torch.long),
+            'targets': torch.tensor(self.label[index], dtype=torch.long),
+            'soft_targets': torch.tensor(self.soft_targets[index])
+        }

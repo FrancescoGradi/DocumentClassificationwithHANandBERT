@@ -3,8 +3,10 @@ from tensorflow.keras.layers import Input, Dropout, GRU, TimeDistributed, Bidire
 from tensorflow.keras import backend as K
 from tensorflow.keras import layers
 from tensorflow.keras import regularizers
-
 from tensorflow.keras import initializers as initializers
+
+import torch
+import torch.nn as nn
 
 
 class AttentionLayer(layers.Layer):

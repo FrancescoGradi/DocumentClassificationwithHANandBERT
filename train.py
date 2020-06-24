@@ -37,8 +37,8 @@ def kdLstmTrain(dataset_name, n_classes, teacher_path, TRAIN_BATCH_SIZE=16, EPOC
                 EMBEDDING_DIM=50, HIDDEN_DIM=256, LAMBDA=0.5, validation=True, from_checkpoint=False, student_path=None):
     device = 'cuda' if cuda.is_available() else 'cpu'
 
-    if (os.path.isfile('datasets/' + dataset_name + '_bert_cleaned.txt')):
-        with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
+    if (os.path.isfile('datasets/' + dataset_name + '_kd_cleaned.txt')):
+        with open('datasets/' + dataset_name + '_kd_cleaned.txt', 'rb') as f:
             data_cleaned = pickle.load(f)
     else:
         print('Please, run bertPreprocessing first.')
@@ -81,6 +81,28 @@ def kdLstmTrain(dataset_name, n_classes, teacher_path, TRAIN_BATCH_SIZE=16, EPOC
     total_params = sum(p.numel() for p in teacher_model.parameters())
     print('Teacher total parameters: {:}'.format(total_params))
 
+    teacher_model.to(device)
+    teacher_model.eval()
+
+    soft_targets = []
+
+    print('Creating soft targets...')
+    with torch.no_grad():
+        for batch in training_loader:
+            ids = batch['ids'].to(device, dtype=torch.long)
+            mask = batch['mask'].to(device, dtype=torch.long)
+            token_type_ids = batch['token_type_ids'].to(device, dtype=torch.long)
+            targets = batch['targets'].to(device, dtype=torch.long)
+
+            soft_target = torch.softmax(teacher_model(ids, mask, token_type_ids), dim=1)
+            soft_targets.extend(soft_target.cpu().detach().numpy().tolist())
+
+    del teacher_model
+    print(soft_targets)
+
+    training_set.setSoftTargets(soft_targets)
+    training_loader = DataLoader(training_set, **train_params)
+
     optimizer = torch.optim.Adam(params=student_model.parameters(), lr=LEARNING_RATE)
 
     classification_criterion = torch.nn.CrossEntropyLoss()
@@ -101,9 +123,6 @@ def kdLstmTrain(dataset_name, n_classes, teacher_path, TRAIN_BATCH_SIZE=16, EPOC
         print('Start epoch: {:}'.format(start_epoch + 1))
 
     student_model.to(device)
-    teacher_model.to(device)
-
-    teacher_model.eval()
 
     # Stats with Tensorboard
     log_dir = "logs/" + dataset_name + "_kdLstm/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -125,13 +144,14 @@ def kdLstmTrain(dataset_name, n_classes, teacher_path, TRAIN_BATCH_SIZE=16, EPOC
             mask = batch['mask'].to(device, dtype=torch.long)
             token_type_ids = batch['token_type_ids'].to(device, dtype=torch.long)
             targets = batch['targets'].to(device, dtype=torch.long)
+            soft_targets = batch['soft_targets'].to(device)
 
             student_model.zero_grad()
 
             outputs = student_model(ids)
             outputs = torch.softmax(outputs, dim=1)
 
-            distillation = LAMBDA * F.kl_div(outputs, torch.softmax(teacher_model(ids, mask, token_type_ids), dim=1), 'batchmean')
+            distillation = LAMBDA * F.kl_div(outputs, soft_targets, 'batchmean')
 
             # Loss = classification + lambda * distillation
             loss = classification_criterion(outputs, torch.max(targets, 1)[1]) + distillation
@@ -185,13 +205,8 @@ def kdLstmTrain(dataset_name, n_classes, teacher_path, TRAIN_BATCH_SIZE=16, EPOC
                     outputs = student_model(ids)
                     outputs = torch.softmax(outputs, dim=1)
 
-                    total_eval_loss += classification_criterion(outputs, torch.max(targets, 1)[1]) + \
-                                       (LAMBDA * F.kl_div(outputs, torch.softmax(teacher_model(ids, mask, token_type_ids), dim=1), 'batchmean'))
-
                     fin_targets.extend(targets.cpu().detach().numpy().tolist())
                     fin_outputs.extend(torch.softmax(outputs, dim=1).cpu().detach().numpy().tolist())
-
-            valid_loss = total_eval_loss / len(validation_loader)
 
             fin_outputs = np.array(fin_outputs)
             fin_targets = np.array(fin_targets)
@@ -199,8 +214,6 @@ def kdLstmTrain(dataset_name, n_classes, teacher_path, TRAIN_BATCH_SIZE=16, EPOC
             accuracy = accuracy_score(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1))
 
             print("  Validation Accuracy: {0:.2f}".format(accuracy))
-            print("  Validation Loss: {0:.2f}".format(valid_loss))
-            writer.add_scalar('epoch_loss', valid_loss, epoch)
             writer.add_scalar('epoch_accuracy', accuracy, epoch)
 
     print("")
@@ -525,9 +538,8 @@ def bertTrain(dataset_name, n_classes, TRAIN_BATCH_SIZE=16, EPOCHS=3, LEARNING_R
     print("Total training took {:} (h:mm:ss)".format(formatTime(time.time() - total_t0)))
 
 
-def hanTrain(dataset_name, n_classes, cleaned=False):
-    #physical_devices = tf.config.list_physical_devices('GPU')
-    #tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
+def hanTrain(dataset_name, n_classes, cleaned=False, MAX_FEATURES=200000, MAX_SENTENCE_NUM=20, MAX_WORD_NUM=40,
+             EMBED_SIZE=200, BATCH_SIZE=64, NUM_EPOCHS=60):
     '''
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 15  # maximum number of sentences in one document
@@ -542,15 +554,15 @@ def hanTrain(dataset_name, n_classes, cleaned=False):
     dataset_name = "yelp_2014"
     data_df = pd.read_csv("datasets/" + dataset_name + ".csv")
     cleaned = True
-    
+
     
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 20  # maximum number of sentences in one document
     MAX_WORD_NUM = 40  # maximum number of words in each sentence
-    EMBED_SIZE = 100  # vector size of word embedding
+    EMBED_SIZE = 200  # vector size of word embedding
     BATCH_SIZE = 64
     NUM_EPOCHS = 60
-    INIT_LR = 1e-2
+    LEARNING_RATE = 1e-2
 
     # Reading JSON dataset with Pandas
 
@@ -565,7 +577,7 @@ def hanTrain(dataset_name, n_classes, cleaned=False):
     data_df['label'] = data_df['label'].apply(lambda x: len(str(x)) - 1)
     
     cleaned = False
-    '''
+
 
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 25  # maximum number of sentences in one document
@@ -574,7 +586,7 @@ def hanTrain(dataset_name, n_classes, cleaned=False):
     BATCH_SIZE = 128
     NUM_EPOCHS = 45
     INIT_LR = 1e-2
-    '''
+    
     dataset_name = 'imdb_reviews'
     ds = tfds.load(dataset_name, split='train')
     reviews = []
@@ -604,7 +616,8 @@ def hanTrain(dataset_name, n_classes, cleaned=False):
 
     model = HanModel(n_classes=n_classes, len_word_index=len(word_index), embedding_matrix=embedding_matrix,
                      MAX_SENTENCE_NUM=MAX_SENTENCE_NUM, MAX_WORD_NUM=MAX_WORD_NUM, EMBED_SIZE=EMBED_SIZE)
-    optimizer = SGD(momentum=0.9)
+    # optimizer = SGD(momentum=0.9)
+    optimizer = Adam()
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['acc'])
 
     print(model.summary())
