@@ -213,7 +213,7 @@ def kdLstmTrain(dataset_name, n_classes, teacher_path, TRAIN_BATCH_SIZE=16, EPOC
 
             accuracy = accuracy_score(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1))
 
-            print("  Validation Accuracy: {0:.2f}".format(accuracy))
+            print("  Validation Accuracy: {0:.4f}".format(accuracy))
             writer.add_scalar('epoch_accuracy', accuracy, epoch)
 
     print("")
@@ -370,8 +370,8 @@ def lstmTrain(dataset_name, n_classes, TRAIN_BATCH_SIZE=64, EPOCHS=30, LEARNING_
 
             accuracy = accuracy_score(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1))
 
-            print("  Validation Accuracy: {0:.2f}".format(accuracy))
-            print("  Validation Loss: {0:.2f}".format(valid_loss))
+            print("  Validation Accuracy: {0:.4f}".format(accuracy))
+            print("  Validation Loss: {0:.4f}".format(valid_loss))
             writer.add_scalar('epoch_loss', valid_loss, epoch)
             writer.add_scalar('epoch_accuracy', accuracy, epoch)
 
@@ -524,8 +524,8 @@ def bertTrain(dataset_name, n_classes, TRAIN_BATCH_SIZE=16, EPOCHS=3, LEARNING_R
 
             accuracy = accuracy_score(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1))
 
-            print("  Validation Accuracy: {0:.2f}".format(accuracy))
-            print("  Validation Loss: {0:.2f}".format(valid_loss))
+            print("  Validation Accuracy: {0:.4f}".format(accuracy))
+            print("  Validation Loss: {0:.4f}".format(valid_loss))
             writer.add_scalar('epoch_loss', valid_loss, epoch)
             writer.add_scalar('epoch_accuracy', accuracy, epoch)
 
