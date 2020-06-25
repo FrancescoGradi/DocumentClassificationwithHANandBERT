@@ -291,6 +291,48 @@ def bertEvaluate(dataset_name, n_classes, model_path, isCheckpoint=False):
     print(classification_report(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1), digits=4))
 
 
+def softTargetsEvaluate(dataset_name, n_classes):
+
+    if (os.path.isfile('datasets/' + dataset_name + '_kd_cleaned.txt')):
+        with open('datasets/' + dataset_name + '_kd_cleaned.txt', 'rb') as f:
+            data_cleaned = pickle.load(f)
+    else:
+        print('Please, run kdPreprocessing first.')
+        return
+
+    training_set = data_cleaned[0]
+
+    train_params = {'batch_size': 128,
+                    'shuffle': False,
+                    'num_workers': 0
+                    }
+
+    training_loader = DataLoader(training_set, **train_params)
+
+    t0 = time.time()
+    fin_targets = []
+    fin_outputs = []
+    with torch.no_grad():
+        for step, batch in enumerate(training_loader):
+            targets = batch['targets']
+            soft_targets = batch['soft_targets']
+
+            if step % 100 == 0 and not step == 0:
+                elapsed = formatTime(time.time() - t0)
+                print('  Batch {:>5,}  of  {:>5,}.   Elapsed: {:}.'.format(step, len(training_loader), elapsed))
+
+            fin_targets.extend(targets.detach().numpy().tolist())
+            fin_outputs.extend(soft_targets.detach().numpy().tolist())
+
+    fin_outputs = np.array(fin_outputs)
+    fin_targets = np.array(fin_targets)
+
+    accuracy = accuracy_score(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1))
+
+    print("  Train Accuracy: {0:.4f}".format(accuracy))
+    print(classification_report(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1), digits=4))
+
+
 def getRandomReview(container_path):
     """
     Function that returns a text and relative label of a review from a test dataset in .csv format.

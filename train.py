@@ -33,15 +33,15 @@ from lstmModel import LSTMBase
 from utils import wordAndSentenceCounter, formatTime
 
 
-def kdLstmTrain(dataset_name, n_classes, teacher_path, TRAIN_BATCH_SIZE=16, EPOCHS=30, LEARNING_RATE=1e-03,
-                EMBEDDING_DIM=50, HIDDEN_DIM=256, LAMBDA=0.5, validation=True, from_checkpoint=False, student_path=None):
+def kdLstmTrain(dataset_name, n_classes, TRAIN_BATCH_SIZE=16, EPOCHS=30, LEARNING_RATE=1e-03, EMBEDDING_DIM=50,
+                HIDDEN_DIM=256, LAMBDA=0.5, validation=True, from_checkpoint=False, student_path=None):
     device = 'cuda' if cuda.is_available() else 'cpu'
 
     if (os.path.isfile('datasets/' + dataset_name + '_kd_cleaned.txt')):
         with open('datasets/' + dataset_name + '_kd_cleaned.txt', 'rb') as f:
             data_cleaned = pickle.load(f)
     else:
-        print('Please, run bertPreprocessing first.')
+        print('Please, run kdPreprocessing first.')
         return
 
     training_set = data_cleaned[0]
@@ -75,33 +75,6 @@ def kdLstmTrain(dataset_name, n_classes, teacher_path, TRAIN_BATCH_SIZE=16, EPOC
     total_trainable_params = sum(p.numel() for p in student_model.parameters() if p.requires_grad)
     print('Student total parameters: {:}'.format(total_params))
     print('Student trainable parameters: {:}'.format(total_trainable_params))
-
-    teacher_model = BertModel(n_classes=n_classes, dropout=0.3)
-    print(teacher_model)
-    total_params = sum(p.numel() for p in teacher_model.parameters())
-    print('Teacher total parameters: {:}'.format(total_params))
-
-    teacher_model.to(device)
-    teacher_model.eval()
-
-    soft_targets = []
-
-    print('Creating soft targets...')
-    with torch.no_grad():
-        for batch in training_loader:
-            ids = batch['ids'].to(device, dtype=torch.long)
-            mask = batch['mask'].to(device, dtype=torch.long)
-            token_type_ids = batch['token_type_ids'].to(device, dtype=torch.long)
-            targets = batch['targets'].to(device, dtype=torch.long)
-
-            soft_target = torch.softmax(teacher_model(ids, mask, token_type_ids), dim=1)
-            soft_targets.extend(soft_target.cpu().detach().numpy().tolist())
-
-    del teacher_model
-    print(soft_targets)
-
-    training_set.setSoftTargets(soft_targets)
-    training_loader = DataLoader(training_set, **train_params)
 
     optimizer = torch.optim.Adam(params=student_model.parameters(), lr=LEARNING_RATE)
 
@@ -189,9 +162,6 @@ def kdLstmTrain(dataset_name, n_classes, teacher_path, TRAIN_BATCH_SIZE=16, EPOC
             print("Running Validation...")
 
             student_model.eval()
-
-            total_eval_accuracy = 0
-            total_eval_loss = 0
 
             fin_targets = []
             fin_outputs = []

@@ -1,12 +1,16 @@
 import string
 import pickle
 import os.path
+import time
+import torch
 
 import pandas as pd
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
+from torch import cuda
+from torch.utils.data import DataLoader
 from keras.preprocessing.text import Tokenizer, text_to_word_sequence
 from keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.optimizers import Adam
@@ -15,7 +19,9 @@ from sklearn.model_selection import train_test_split
 from nltk.corpus import stopwords
 from transformers import BertTokenizer, TFBertForSequenceClassification
 
-from utils import cleanString, splitDataframe, wordToSeq, toCategorical, CustomDataset, CustomDatasetWithSoftTargets
+from bertModel import BertModel
+from utils import cleanString, splitDataframe, wordToSeq, toCategorical, CustomDataset, CustomDatasetWithSoftTargets, \
+    formatTime
 
 
 def hanPreprocessing(dataset_name, data_df, save_all=False, cleaned=False, MAX_FEATURES=200000, MAX_SENTENCE_NUM=40,
@@ -168,7 +174,7 @@ def bertPreprocessing(dataset_name, data_df, MAX_LEN=128, save_all=True):
     return training_set, validation_set, test_set
 
 
-def kdPreprocessing(dataset_name, data_df, MAX_LEN=128, save_all=True):
+def kdPreprocessing(dataset_name, n_classes, data_df, teacher_path, MAX_LEN=128, save_all=True, isCheckpoint=False):
     """
     Dataset preparation for Bert Model and KD models. It is splitted (0.8 train, 0.1 valid and 0.1 test) and sets are
     returned. Every set is a CustomDatasetWithSoftTargets class (see utils.py) that return data in Bert format.
@@ -178,6 +184,7 @@ def kdPreprocessing(dataset_name, data_df, MAX_LEN=128, save_all=True):
     :param save_all: boolean that specifies if save all data for time saving before training or network evaluating.
     :return: training_set, validation_set, test_set in CustomDataset format.
     """
+    device = 'cuda' if cuda.is_available() else 'cpu'
 
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
@@ -197,6 +204,49 @@ def kdPreprocessing(dataset_name, data_df, MAX_LEN=128, save_all=True):
     training_set = CustomDatasetWithSoftTargets(train_dataset, tokenizer, MAX_LEN)
     validation_set = CustomDatasetWithSoftTargets(val_dataset, tokenizer, MAX_LEN)
     test_set = CustomDatasetWithSoftTargets(test_dataset, tokenizer, MAX_LEN)
+
+    train_params = {'batch_size': 32,
+                    'shuffle': False,
+                    'num_workers': 0
+                    }
+
+    training_loader = DataLoader(training_set, **train_params)
+
+    teacher_model = BertModel(n_classes=n_classes, dropout=0.3)
+    if isCheckpoint:
+        teacher_model.load_state_dict(torch.load(teacher_path)['model_state_dict'])
+    else:
+        teacher_model.load_state_dict(torch.load(teacher_path))
+
+    print(teacher_model)
+    total_params = sum(p.numel() for p in teacher_model.parameters())
+    print('Teacher total parameters: {:}'.format(total_params))
+
+    teacher_model.to(device)
+    teacher_model.eval()
+
+    soft_targets = []
+    t0 = time.time()
+
+    print('Creating soft targets...')
+    with torch.no_grad():
+        for step, batch in enumerate(training_loader):
+            ids = batch['ids'].to(device, dtype=torch.long)
+            mask = batch['mask'].to(device, dtype=torch.long)
+            token_type_ids = batch['token_type_ids'].to(device, dtype=torch.long)
+
+            if step % 100 == 0 and not step == 0:
+                # Calculate elapsed time in minutes.
+                elapsed = formatTime(time.time() - t0)
+                # Report progress.
+                print('  Batch {:>5,}  of  {:>5,}.   Elapsed: {:}.'.format(step, len(training_loader), elapsed))
+
+            soft_target = torch.softmax(teacher_model(ids, mask, token_type_ids), dim=1)
+            soft_targets.extend(soft_target.cpu().detach().numpy().tolist())
+
+    del teacher_model
+
+    training_set.setSoftTargets(soft_targets)
 
     if save_all is True:
         os.makedirs(os.path.dirname('datasets/' + dataset_name + '_kd_cleaned.txt'), exist_ok=True)
