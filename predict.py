@@ -309,6 +309,8 @@ def softTargetsEvaluate(dataset_name, n_classes):
 
     training_loader = DataLoader(training_set, **train_params)
 
+
+    print('Soft targets evaluating...')
     t0 = time.time()
     fin_targets = []
     fin_outputs = []
@@ -349,7 +351,6 @@ def lstmEvaluate(dataset_name, n_classes, model_path, isCheckpoint=False):
 
     with open('datasets/' + dataset_name + '_bert_cleaned.txt', 'rb') as f:
         data_cleaned = pickle.load(f)
-
 
     test_set = data_cleaned[2]
     MAX_LEN = data_cleaned[3]
@@ -422,8 +423,8 @@ def lstmEvaluate(dataset_name, n_classes, model_path, isCheckpoint=False):
 
     print(classification_report(fin_targets.argmax(axis=1), fin_outputs.argmax(axis=1), digits=4))
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
 
     physical_devices = tf.config.list_physical_devices('GPU')
     tf.config.experimental.set_memory_growth(physical_devices[0], enable=True)
