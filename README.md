@@ -134,6 +134,12 @@ from predict import lstmEvaluate
 lstmEvaluate('IMDB', 10, model_path='models/model_IMDB_lstm/20200618-133908')
 ```
 
+## Report
+
+A copy of the report (italian) can be found 
+<a href="https://github.com/FrancescoGradi/DocumentClassificationwithHANandBERT/blob/master/demo/relazioneMachineLearning.pdf">here</a>.
+
+
 
 ## References
 
