@@ -3,7 +3,7 @@
 Thanks to Deep Learning, Natural Language Processing (NLP) has grown a lot over the past few years. This project deals 
 with some of the latest techniques of Document Classification, an important task in NLP. It consists to assign a 
 document to one category. If category is actually a _sentiment_ (a numeric evaluation of text), we talk about 
-Sentiment Analysis, like datasets take in this implementation.
+Sentiment Analysis, like datasets taken in this implementation.
 
 ## This Project
 
@@ -27,17 +27,17 @@ network (LSTM) to achieve better results [4].
 
 ## Datasets
 
-To test models, three Sentiment Analysis datasets was chosen:
+To test models, three Sentiment Analysis datasets were chosen:
 
-- **IMDB Small**: short version of IMDB (about 25 000 film reviews), with only two sentiments: positive or negative. 
+- **IMDB Small**: short version of IMDB (about 25 000 film reviews), with only two sentiments: _positive_ or _negative_. 
 This dataset can be retrieved in TensorFlow datasets.
 
 - **IMDB**: large version with about 135 000 reviews and 10 sentiments (stars from 1 to 10). It was found 
 <a href="https://github.com/castorini/hedwig ">here</a>.
 
-- **Yelp 2014**: dataset of restaurants reviews with sentiment from 1 to 5. I was harder to retrieve the right year 
+- **Yelp 2014**: dataset of restaurants reviews with sentiment from 1 to 5. It was harder to retrieve the right year 
 version, so we downloaded the <a href="https://www.yelp.com/dataset">complete version<a> and we selected only 2014 
-reviews by hand. Total reviews are about 900 000 versus 1 million in original dataset (maybe the original includes some 
+reviews by hand (Python script, in `utils.py`). Total reviews are about 900 000 versus 1 million in original dataset (maybe the original includes some 
 2013 or 2015 data). Anyway results are similar. 
 
 ## Results
@@ -73,14 +73,14 @@ represents most important sentences and red most relevant words.
 </p>
 </div>
 
-**HAN PREDICTION: 1, TARGET: 1**. They was attentioned the first and the last sentences, the word _'recommend'_ here has 
+**HAN PREDICTION: 1, TARGET: 1**. They were attentioned the first and the last sentences, the word _'recommend'_ here has 
 a different sense, because context is different.
 
 ## Reproducing Experiments
 
 ### Dependencies
 
-This project uses PyTorch and Tensorflow 2 (only for HAN model), for training GPU is needed. Code was developed and 
+This project uses PyTorch and TensorFlow 2 (only for HAN model), for training GPU is needed. Code was developed and 
 tested with these main dependencies:
 
 - Python 3.7.7
@@ -92,18 +92,18 @@ tested with these main dependencies:
 - tensorflow 2.1.0
 - transformers 2.10.0
 
-All dependencies can be installed with command line:
+All dependencies can be installed, after cloned this repository, with command line:
 
 ```sh
 $ pip install -r requirements.txt
 ```
 
-After cloned this repository. For Han Preprocessing `glove.6B.100d.txt` is also required (for this project was chosen 
+For Han Preprocessing `glove.6B.100d.txt` is also required (for this project was chosen 
 100 dimension version) that can be retrieved in <a href="https://nlp.stanford.edu/projects/glove/">GloVe site</a>.
 
 ### How make it works
 
-The pipeline is getting the dataset in pandas dataframe format (there are some utils functions, they expect dataset in 
+The pipeline is getting the dataset in pandas dataframe format (there are some utils functions, code expects dataset in 
 `datasets/` local directory), preprocessing (it automatically splits train, valid and test sets), training and 
 evaluating. Here a `main.py` example:
 
@@ -138,7 +138,6 @@ lstmEvaluate('IMDB', 10, model_path='models/model_IMDB_lstm/20200618-133908')
 
 A copy of the report (italian) can be found 
 <a href="https://github.com/FrancescoGradi/DocumentClassificationwithHANandBERT/blob/master/demo/relazioneMachineLearning.pdf">here</a>.
-
 
 
 ## References
