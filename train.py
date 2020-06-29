@@ -15,7 +15,7 @@ import datetime
 import torch
 
 from matplotlib import pyplot as plt
-from tensorflow.keras.optimizers import Adam, SGD
+from tensorflow.keras.optimizers import Adam, SGD, RMSprop
 from sklearn.metrics import classification_report, accuracy_score
 from tensorflow.keras.callbacks import TensorBoard, EarlyStopping
 from tensorflow.keras.layers import GlobalAveragePooling1D, Dense, Input, Dropout
@@ -509,7 +509,7 @@ def bertTrain(dataset_name, n_classes, TRAIN_BATCH_SIZE=16, EPOCHS=3, LEARNING_R
 
 
 def hanTrain(dataset_name, n_classes, cleaned=False, MAX_FEATURES=200000, MAX_SENTENCE_NUM=20, MAX_WORD_NUM=40,
-             EMBED_SIZE=200, BATCH_SIZE=64, NUM_EPOCHS=60):
+             EMBED_SIZE=200, BATCH_SIZE=64, NUM_EPOCHS=60, LEARNING_RATE=1e-03):
     '''
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 15  # maximum number of sentences in one document
@@ -525,7 +525,6 @@ def hanTrain(dataset_name, n_classes, cleaned=False, MAX_FEATURES=200000, MAX_SE
     data_df = pd.read_csv("datasets/" + dataset_name + ".csv")
     cleaned = True
 
-    
     MAX_FEATURES = 200000  # maximum number of unique words that should be included in the tokenized word index
     MAX_SENTENCE_NUM = 20  # maximum number of sentences in one document
     MAX_WORD_NUM = 40  # maximum number of words in each sentence
@@ -587,7 +586,8 @@ def hanTrain(dataset_name, n_classes, cleaned=False, MAX_FEATURES=200000, MAX_SE
     model = HanModel(n_classes=n_classes, len_word_index=len(word_index), embedding_matrix=embedding_matrix,
                      MAX_SENTENCE_NUM=MAX_SENTENCE_NUM, MAX_WORD_NUM=MAX_WORD_NUM, EMBED_SIZE=EMBED_SIZE)
     # optimizer = SGD(momentum=0.9)
-    optimizer = Adam()
+    # optimizer = Adam(learning_rate=LEARNING_RATE)
+    optimizer = RMSprop()
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['acc'])
 
     print(model.summary())

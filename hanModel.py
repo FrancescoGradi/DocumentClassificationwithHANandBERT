@@ -83,23 +83,22 @@ def HanModel(n_classes, len_word_index, embedding_matrix, MAX_SENTENCE_NUM=40, M
     word_input = Input(shape=(MAX_WORD_NUM,), dtype='int32', name='word_input')
     word_sequences = Embedding(len_word_index + 1, EMBED_SIZE, weights=[embedding_matrix], input_length=MAX_WORD_NUM,
                                trainable=True, name='word_embedding')(word_input)
-    emb_drop = Dropout(rate=0.1, name='word_dropout')(word_sequences)
-    word_gru = Bidirectional(GRU((int)(EMBED_SIZE / 2), return_sequences=True,
-                                 recurrent_regularizer=regularizers.l2(0.001)), name='word_gru')(emb_drop)
+    emb_drop = Dropout(rate=0.2, name='word_dropout')(word_sequences)
+    word_gru = Bidirectional(GRU((int)(EMBED_SIZE / 2), return_sequences=True, bias_regularizer=regularizers.l2(0.01), kernel_regularizer=regularizers.l2(0.01),
+                                 recurrent_regularizer=regularizers.l2(0.01)), name='word_gru')(emb_drop)
     word_dense = Dense(EMBED_SIZE, activation='relu', name='word_dense')(word_gru)
     word_att, word_coeff = AttentionLayer(EMBED_SIZE, return_coefficients=True, name='word_attention')(word_dense)
-
     word_encoder = Model(inputs=word_input, outputs=word_att, name='WordEncoder')
     print(word_encoder.summary())
 
     # Sentence Attention model
     sent_input = Input(shape=(MAX_SENTENCE_NUM, MAX_WORD_NUM), dtype='int32', name='sent_input')
     sent_encoder = TimeDistributed(word_encoder, name='sent_linking')(sent_input)
-    sent_gru = Bidirectional(GRU((int)(EMBED_SIZE / 2), return_sequences=True,
-                                 recurrent_regularizer=regularizers.l2(0.001)), name='sent_gru')(sent_encoder)
+    sent_gru = Bidirectional(GRU((int)(EMBED_SIZE / 2), return_sequences=True, bias_regularizer=regularizers.l2(0.01), kernel_regularizer=regularizers.l2(0.01),
+                                 recurrent_regularizer=regularizers.l2(0.01)), name='sent_gru')(sent_encoder)
     sent_dense = Dense(EMBED_SIZE, activation='relu', name='sent_dense')(sent_gru)
     sent_att, sent_coeff = AttentionLayer(EMBED_SIZE, return_coefficients=True, name='sent_attention')(sent_dense)
-    sent_drop = Dropout(rate=0.2, name='sent_dropout')(sent_att)
+    sent_drop = Dropout(rate=0.5, name='sent_dropout')(sent_att)
     preds = Dense(n_classes, activation='softmax', name='output')(sent_drop)
 
     return Model(sent_input, preds, name='HanModel')
